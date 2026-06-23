@@ -567,10 +567,10 @@ function getRollingPowerAverage() {
   return state.powerDisplayHistory.reduce((sum, item) => sum + item.power, 0) / state.powerDisplayHistory.length;
 }
 
-function selectSensorSource({ id, type, transport, name }) {
+async function selectSensorSource({ id, type, transport, name }) {
   if (transport !== SENSOR_TRANSPORTS.bluetooth) disconnectBluetoothSensor(type);
   if (type === SENSOR_TYPES.power && transport !== SENSOR_TRANSPORTS.serial) {
-    disconnectSerialPower(state.serialPower);
+    await disconnectSerialPower(state.serialPower);
   }
   const sensorId = id ?? `${type}-${transport.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}`;
   const sensor = createSensor({ id: sensorId, type, transport, name });
@@ -762,6 +762,9 @@ function disconnectBluetoothSensor(type) {
 function getSerialConnectError(error) {
   if (error.name === "NotFoundError") return "No Powerbahn serial port selected.";
   if (error.name === "SecurityError") return "Serial port access was blocked by browser permissions.";
+  if (/open/i.test(error.message || "")) {
+    return "Unable to open the Powerbahn serial port. Close other apps or browser tabs using it, unplug/replug the USB cable, then select the USB serial device again.";
+  }
   return error.message || "Unable to connect to the Powerbahn serial port.";
 }
 

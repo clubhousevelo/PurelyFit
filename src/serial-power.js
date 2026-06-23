@@ -45,19 +45,25 @@ export async function connectSerialPower(controller, { port = null, portName = "
     throw new Error("Web Serial is not available. Use Chrome or Edge over HTTPS or localhost.");
   }
 
-  disconnectSerialPower(controller);
+  await disconnectSerialPower(controller);
   const selectedPort = port ?? await navigator.serial.requestPort();
   const portLabel = portName ? ` (${portName})` : "";
 
   setSerialStatus(controller, `Opening Powerbahn serial port${portLabel}`);
-  await selectedPort.open({
-    baudRate: POWERBAHN_BAUD_RATE,
-    dataBits: 8,
-    stopBits: 1,
-    parity: "none",
-    flowControl: "none",
-    bufferSize: 1024,
-  });
+  try {
+    await selectedPort.open({
+      baudRate: POWERBAHN_BAUD_RATE,
+      dataBits: 8,
+      stopBits: 1,
+      parity: "none",
+      flowControl: "none",
+      bufferSize: 1024,
+    });
+  } catch (error) {
+    controller.lastError = error.message;
+    setSerialStatus(controller, `Unable to open serial port${portLabel}: ${error.message}`);
+    throw error;
+  }
 
   controller.port = selectedPort;
   controller.writer = selectedPort.writable.getWriter();
@@ -90,31 +96,45 @@ export function getSerialPortLabel(port, index) {
   return parts.length ? parts.join(" / ") : `Granted port ${index + 1}`;
 }
 
-export function disconnectSerialPower(controller) {
+export async function disconnectSerialPower(controller) {
   if (controller.pollTimer) window.clearInterval(controller.pollTimer);
   controller.pollTimer = null;
 
   const reader = controller.reader;
   const writer = controller.writer;
+  const port = controller.port;
+  const readLoop = controller.readLoop;
   controller.reader = null;
   controller.writer = null;
+  controller.port = null;
+  controller.readLoop = null;
 
   try {
-    reader?.cancel?.();
+    await reader?.cancel?.();
   } catch {
     // The browser may already have closed the stream.
   }
+
+  try {
+    await readLoop;
+  } catch {
+    // Read-loop errors are reflected in status while connected.
+  }
+
   try {
     writer?.releaseLock?.();
   } catch {
     // Best-effort cleanup for partially opened ports.
   }
 
-  if (controller.port) {
-    controller.port.close?.().catch(() => undefined);
+  if (port?.readable || port?.writable) {
+    try {
+      await port.close?.();
+    } catch {
+      // Some browsers throw if the device was physically unplugged first.
+    }
   }
 
-  controller.port = null;
   controller.connected = false;
   setSerialStatus(controller, controller.supported ? "Disconnected" : "Web Serial unavailable");
 }
@@ -122,10 +142,11 @@ export function disconnectSerialPower(controller) {
 async function readSerialFrames(controller) {
   const frame = [];
   let inFrame = false;
+  const reader = controller.reader;
 
   try {
-    while (controller.reader) {
-      const { value, done } = await controller.reader.read();
+    while (controller.reader === reader) {
+      const { value, done } = await reader.read();
       if (done) break;
       if (!value) continue;
 
@@ -154,7 +175,11 @@ async function readSerialFrames(controller) {
       setSerialStatus(controller, `Serial read failed: ${error.message}`);
     }
   } finally {
-    controller.reader?.releaseLock?.();
+    try {
+      reader?.releaseLock?.();
+    } catch {
+      // The lock may already be released after cancellation.
+    }
   }
 }
 
