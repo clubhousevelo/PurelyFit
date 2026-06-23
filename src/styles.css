@@ -329,7 +329,7 @@ th {
 
 .serial-port-panel {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.6fr) minmax(200px, 1fr) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(110px, 0.5fr) minmax(110px, 0.5fr) auto auto minmax(200px, 1fr) auto;
   gap: 10px;
   align-items: end;
   margin-bottom: 14px;
@@ -357,6 +357,19 @@ th {
   background: #fff;
   color: var(--ink);
   font: inherit;
+}
+
+.serial-port-panel .serial-checkbox {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  gap: 6px;
+  color: var(--ink-soft);
+}
+
+.serial-port-panel .serial-checkbox input {
+  min-height: auto;
+  width: auto;
 }
 
 .sensor-connect-prompt {

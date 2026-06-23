@@ -132,6 +132,21 @@
               </select>
             </label>
             <label>
+              Flow
+              <select id="serialFlowSelect">
+                <option value="none">None</option>
+                <option value="hardware">Hardware</option>
+              </select>
+            </label>
+            <label class="serial-checkbox">
+              <input id="serialDtrInput" type="checkbox" checked>
+              DTR
+            </label>
+            <label class="serial-checkbox">
+              <input id="serialRtsInput" type="checkbox" checked>
+              RTS
+            </label>
+            <label>
               Granted browser port
               <select id="serialPortSelect">
                 <option value="">Use browser picker</option>

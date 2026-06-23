@@ -138,6 +138,9 @@ export async function connectSerialPower(controller, {
   port = null,
   portName = "",
   baudRate = DEFAULT_POWERBAHN_BAUD_RATE,
+  flowControl = "none",
+  dataTerminalReady = true,
+  requestToSend = true,
 } = {}) {
   if (!controller.supported) {
     throw new Error("Web Serial is not available. Use Chrome or Edge over HTTPS or localhost.");
@@ -155,7 +158,7 @@ export async function connectSerialPower(controller, {
       dataBits: 8,
       stopBits: 1,
       parity: "none",
-      flowControl: "none",
+      flowControl,
       bufferSize: 1024,
     });
   } catch (error) {
@@ -166,11 +169,11 @@ export async function connectSerialPower(controller, {
 
   try {
     await selectedPort.setSignals({
-      dataTerminalReady: true,
-      requestToSend: true,
+      dataTerminalReady,
+      requestToSend,
       break: false,
     });
-    controller.signals = "DTR/RTS on";
+    controller.signals = `DTR ${dataTerminalReady ? "on" : "off"} / RTS ${requestToSend ? "on" : "off"} / flow ${flowControl}`;
   } catch (error) {
     controller.signals = `signals unavailable: ${error.message}`;
   }

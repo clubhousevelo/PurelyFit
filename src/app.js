@@ -34,6 +34,9 @@ const RESISTANCE_POWER_MAX = 1200;
 const RESISTANCE_POWER_STEP = 5;
 const SERIAL_PORT_STORAGE_KEY = "purelyfit.serialPort";
 const SERIAL_BAUD_STORAGE_KEY = "purelyfit.serialBaud";
+const SERIAL_FLOW_STORAGE_KEY = "purelyfit.serialFlow";
+const SERIAL_DTR_STORAGE_KEY = "purelyfit.serialDtr";
+const SERIAL_RTS_STORAGE_KEY = "purelyfit.serialRts";
 
 const BLUETOOTH_SENSOR_PROFILES = {
   [SENSOR_TYPES.power]: {
@@ -72,6 +75,9 @@ const state = {
   grantedSerialPorts: [],
   serialPortName: localStorage.getItem(SERIAL_PORT_STORAGE_KEY) || "COM7",
   serialBaudRate: Number(localStorage.getItem(SERIAL_BAUD_STORAGE_KEY)) || 9600,
+  serialFlowControl: localStorage.getItem(SERIAL_FLOW_STORAGE_KEY) || "none",
+  serialDtr: localStorage.getItem(SERIAL_DTR_STORAGE_KEY) !== "false",
+  serialRts: localStorage.getItem(SERIAL_RTS_STORAGE_KEY) !== "false",
   sensorConnect: {
     message: "Ready to connect sensors",
     busyType: null,
@@ -126,6 +132,9 @@ function bindElements() {
     "useAntHeartButton",
     "serialPortInput",
     "serialBaudSelect",
+    "serialFlowSelect",
+    "serialDtrInput",
+    "serialRtsInput",
     "serialPortSelect",
     "refreshSerialPortsButton",
     "sensorConnectStatus",
@@ -186,6 +195,24 @@ function wireEvents() {
     renderSensorConnectStatus();
     renderSerialDebug();
   });
+  elements.serialFlowSelect.addEventListener("change", (event) => {
+    state.serialFlowControl = event.target.value;
+    localStorage.setItem(SERIAL_FLOW_STORAGE_KEY, state.serialFlowControl);
+    renderSensorConnectStatus();
+    renderSerialDebug();
+  });
+  elements.serialDtrInput.addEventListener("change", (event) => {
+    state.serialDtr = event.target.checked;
+    localStorage.setItem(SERIAL_DTR_STORAGE_KEY, String(state.serialDtr));
+    renderSensorConnectStatus();
+    renderSerialDebug();
+  });
+  elements.serialRtsInput.addEventListener("change", (event) => {
+    state.serialRts = event.target.checked;
+    localStorage.setItem(SERIAL_RTS_STORAGE_KEY, String(state.serialRts));
+    renderSensorConnectStatus();
+    renderSerialDebug();
+  });
   elements.serialPortSelect.addEventListener("change", renderSensorConnectStatus);
   elements.refreshSerialPortsButton.addEventListener("click", refreshGrantedSerialPorts);
   elements.useBluetoothPowerButton.addEventListener("click", () => connectBluetoothSensor(SENSOR_TYPES.power));
@@ -242,6 +269,9 @@ function wireEvents() {
 function initializeSerialPortControls() {
   elements.serialPortInput.value = state.serialPortName;
   elements.serialBaudSelect.value = String(state.serialBaudRate);
+  elements.serialFlowSelect.value = state.serialFlowControl;
+  elements.serialDtrInput.checked = state.serialDtr;
+  elements.serialRtsInput.checked = state.serialRts;
   elements.refreshSerialPortsButton.disabled = !state.serialPower.supported;
 }
 
@@ -620,6 +650,9 @@ async function connectPowerbahnSerialSensor() {
 
   const requestedPortName = elements.serialPortInput.value.trim();
   const baudRate = Number(elements.serialBaudSelect.value) || state.serialBaudRate;
+  const flowControl = elements.serialFlowSelect.value;
+  const dataTerminalReady = elements.serialDtrInput.checked;
+  const requestToSend = elements.serialRtsInput.checked;
   const grantedPort = getSelectedGrantedSerialPort();
   const portHint = requestedPortName ? ` ${requestedPortName}` : "";
   setSensorConnectStatus(`Connecting to Powerbahn USB serial${portHint} at ${baudRate} baud...`, { busyType: SENSOR_TYPES.power });
@@ -629,6 +662,9 @@ async function connectPowerbahnSerialSensor() {
       port: grantedPort,
       portName: requestedPortName,
       baudRate,
+      flowControl,
+      dataTerminalReady,
+      requestToSend,
     });
     sensor.connected = true;
     sensor.lastSeen = new Date();
@@ -823,6 +859,7 @@ function renderSensorConnectStatus() {
   if (!elements.sensorConnectStatus) return;
   const requestedPort = state.serialPortName ? `SerialPort=${state.serialPortName}` : "SerialPort not set";
   const baudText = ` · baud=${state.serialBaudRate}`;
+  const lineText = ` · flow=${state.serialFlowControl} · DTR=${state.serialDtr ? "on" : "off"} · RTS=${state.serialRts ? "on" : "off"}`;
   const selectedPort = getSelectedGrantedSerialPort()
     ? ` · selected ${getSerialPortLabel(getSelectedGrantedSerialPort(), Number(elements.serialPortSelect.value))}`
     : "";
@@ -831,7 +868,7 @@ function renderSensorConnectStatus() {
     : state.serialPower.connected
       ? ` · ${state.serialPower.status}`
       : "";
-  elements.sensorConnectStatus.textContent = `${state.sensorConnect.message} · ${requestedPort}${baudText}${selectedPort}${serialSuffix}`;
+  elements.sensorConnectStatus.textContent = `${state.sensorConnect.message} · ${requestedPort}${baudText}${lineText}${selectedPort}${serialSuffix}`;
   elements.sensorConnectStatus.classList.toggle("warning", state.sensorConnect.error);
   elements.sensorConnectStatus.classList.toggle("busy", Boolean(state.sensorConnect.busyType));
 }
