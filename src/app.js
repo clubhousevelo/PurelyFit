@@ -33,6 +33,7 @@ const RESISTANCE_POWER_MIN = 0;
 const RESISTANCE_POWER_MAX = 1200;
 const RESISTANCE_POWER_STEP = 5;
 const SERIAL_PORT_STORAGE_KEY = "purelyfit.serialPort";
+const SERIAL_BAUD_STORAGE_KEY = "purelyfit.serialBaud";
 
 const BLUETOOTH_SENSOR_PROFILES = {
   [SENSOR_TYPES.power]: {
@@ -70,6 +71,7 @@ const state = {
   serialPower: createSerialPowerController(),
   grantedSerialPorts: [],
   serialPortName: localStorage.getItem(SERIAL_PORT_STORAGE_KEY) || "COM7",
+  serialBaudRate: Number(localStorage.getItem(SERIAL_BAUD_STORAGE_KEY)) || 9600,
   sensorConnect: {
     message: "Ready to connect sensors",
     busyType: null,
@@ -123,6 +125,7 @@ function bindElements() {
     "useBluetoothHeartButton",
     "useAntHeartButton",
     "serialPortInput",
+    "serialBaudSelect",
     "serialPortSelect",
     "refreshSerialPortsButton",
     "sensorConnectStatus",
@@ -176,6 +179,12 @@ function wireEvents() {
     state.serialPortName = event.target.value.trim();
     localStorage.setItem(SERIAL_PORT_STORAGE_KEY, state.serialPortName);
     renderSensorConnectStatus();
+  });
+  elements.serialBaudSelect.addEventListener("change", (event) => {
+    state.serialBaudRate = Number(event.target.value);
+    localStorage.setItem(SERIAL_BAUD_STORAGE_KEY, String(state.serialBaudRate));
+    renderSensorConnectStatus();
+    renderSerialDebug();
   });
   elements.serialPortSelect.addEventListener("change", renderSensorConnectStatus);
   elements.refreshSerialPortsButton.addEventListener("click", refreshGrantedSerialPorts);
@@ -232,6 +241,7 @@ function wireEvents() {
 
 function initializeSerialPortControls() {
   elements.serialPortInput.value = state.serialPortName;
+  elements.serialBaudSelect.value = String(state.serialBaudRate);
   elements.refreshSerialPortsButton.disabled = !state.serialPower.supported;
 }
 
@@ -609,14 +619,16 @@ async function connectPowerbahnSerialSensor() {
   renderAll(true);
 
   const requestedPortName = elements.serialPortInput.value.trim();
+  const baudRate = Number(elements.serialBaudSelect.value) || state.serialBaudRate;
   const grantedPort = getSelectedGrantedSerialPort();
   const portHint = requestedPortName ? ` ${requestedPortName}` : "";
-  setSensorConnectStatus(`Connecting to Powerbahn USB serial${portHint}...`, { busyType: SENSOR_TYPES.power });
+  setSensorConnectStatus(`Connecting to Powerbahn USB serial${portHint} at ${baudRate} baud...`, { busyType: SENSOR_TYPES.power });
 
   try {
     await connectSerialPower(state.serialPower, {
       port: grantedPort,
       portName: requestedPortName,
+      baudRate,
     });
     sensor.connected = true;
     sensor.lastSeen = new Date();
@@ -810,6 +822,7 @@ function setSensorConnectStatus(message, { busyType = null, error = false } = {}
 function renderSensorConnectStatus() {
   if (!elements.sensorConnectStatus) return;
   const requestedPort = state.serialPortName ? `SerialPort=${state.serialPortName}` : "SerialPort not set";
+  const baudText = ` · baud=${state.serialBaudRate}`;
   const selectedPort = getSelectedGrantedSerialPort()
     ? ` · selected ${getSerialPortLabel(getSelectedGrantedSerialPort(), Number(elements.serialPortSelect.value))}`
     : "";
@@ -818,7 +831,7 @@ function renderSensorConnectStatus() {
     : state.serialPower.connected
       ? ` · ${state.serialPower.status}`
       : "";
-  elements.sensorConnectStatus.textContent = `${state.sensorConnect.message} · ${requestedPort}${selectedPort}${serialSuffix}`;
+  elements.sensorConnectStatus.textContent = `${state.sensorConnect.message} · ${requestedPort}${baudText}${selectedPort}${serialSuffix}`;
   elements.sensorConnectStatus.classList.toggle("warning", state.sensorConnect.error);
   elements.sensorConnectStatus.classList.toggle("busy", Boolean(state.sensorConnect.busyType));
 }

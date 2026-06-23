@@ -1,7 +1,8 @@
-const POWERBAHN_BAUD_RATE = 9600;
+const DEFAULT_POWERBAHN_BAUD_RATE = 9600;
 const FRAME_START = 0xf1;
 const FRAME_END = 0xf2;
 const DASHBOARD_POLL_INTERVAL_MS = 300;
+const OPEN_SETTLE_MS = 600;
 
 const COMMANDS = {
   speed: 0xa5,
@@ -57,19 +58,24 @@ export function createSerialPowerController() {
   };
 }
 
-export async function connectSerialPower(controller, { port = null, portName = "" } = {}) {
+export async function connectSerialPower(controller, {
+  port = null,
+  portName = "",
+  baudRate = DEFAULT_POWERBAHN_BAUD_RATE,
+} = {}) {
   if (!controller.supported) {
     throw new Error("Web Serial is not available. Use Chrome or Edge over HTTPS or localhost.");
   }
 
   await disconnectSerialPower(controller);
+  resetSerialStats(controller);
   const selectedPort = port ?? await navigator.serial.requestPort();
-  const portLabel = portName ? ` (${portName})` : "";
+  const portLabel = portName ? ` (${portName}, ${baudRate} baud)` : ` (${baudRate} baud)`;
 
   setSerialStatus(controller, `Opening Powerbahn serial port${portLabel}`);
   try {
     await selectedPort.open({
-      baudRate: POWERBAHN_BAUD_RATE,
+      baudRate,
       dataBits: 8,
       stopBits: 1,
       parity: "none",
@@ -108,6 +114,7 @@ export async function connectSerialPower(controller, { port = null, portName = "
   }, DASHBOARD_POLL_INTERVAL_MS);
   controller.debugTimer = window.setInterval(() => notifyDebug(controller), 500);
 
+  await delay(OPEN_SETTLE_MS);
   await writeFrame(controller, POWERBAHN_WAKE);
   await writeFrame(controller, POWERBAHN_DASHBOARD_POLL);
   notifyDebug(controller);
@@ -283,4 +290,22 @@ function setSerialStatus(controller, status) {
 
 function notifyDebug(controller) {
   controller.onDebug?.(controller);
+}
+
+function resetSerialStats(controller) {
+  Object.assign(controller, {
+    lastError: null,
+    lastPacketHex: null,
+    lastFrameAt: null,
+    lastMeasurement: null,
+    frameCount: 0,
+    parsedFrameCount: 0,
+    byteCount: 0,
+    writeCount: 0,
+    signals: null,
+  });
+}
+
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }

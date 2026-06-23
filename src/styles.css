@@ -329,7 +329,7 @@ th {
 
 .serial-port-panel {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(200px, 1fr) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.6fr) minmax(200px, 1fr) auto;
   gap: 10px;
   align-items: end;
   margin-bottom: 14px;
