@@ -225,6 +225,7 @@ function wireEvents() {
     renderSensors();
     renderSerialDebug();
   };
+  state.serialPower.onDebug = renderSerialDebug;
   state.serialPower.onFrame = updateSerialDebug;
   state.serialPower.onMeasurement = updateSerialPowerSensorValue;
 }
@@ -841,6 +842,7 @@ function renderSerialDebug() {
     `parsed ${serialPower.parsedFrameCount}`,
     `writes ${serialPower.writeCount}`,
     `bytes ${serialPower.byteCount}`,
+    serialPower.signals ?? "signals not set",
     `last ${lastFrameAt}`,
     parsedText,
     rawText,

@@ -46,9 +46,12 @@ export function createSerialPowerController() {
     parsedFrameCount: 0,
     byteCount: 0,
     writeCount: 0,
+    signals: null,
     pollTimer: null,
     readLoop: null,
+    debugTimer: null,
     onFrame: null,
+    onDebug: null,
     onMeasurement: null,
     onStatus: null,
   };
@@ -79,6 +82,17 @@ export async function connectSerialPower(controller, { port = null, portName = "
     throw error;
   }
 
+  try {
+    await selectedPort.setSignals({
+      dataTerminalReady: true,
+      requestToSend: true,
+      break: false,
+    });
+    controller.signals = "DTR/RTS on";
+  } catch (error) {
+    controller.signals = `signals unavailable: ${error.message}`;
+  }
+
   controller.port = selectedPort;
   controller.writer = selectedPort.writable.getWriter();
   controller.reader = selectedPort.readable.getReader();
@@ -92,9 +106,11 @@ export async function connectSerialPower(controller, { port = null, portName = "
       setSerialStatus(controller, `Serial write failed: ${error.message}`);
     });
   }, DASHBOARD_POLL_INTERVAL_MS);
+  controller.debugTimer = window.setInterval(() => notifyDebug(controller), 500);
 
   await writeFrame(controller, POWERBAHN_WAKE);
   await writeFrame(controller, POWERBAHN_DASHBOARD_POLL);
+  notifyDebug(controller);
   setSerialStatus(controller, `Connected to Powerbahn serial power${portLabel}`);
 }
 
@@ -113,7 +129,9 @@ export function getSerialPortLabel(port, index) {
 
 export async function disconnectSerialPower(controller) {
   if (controller.pollTimer) window.clearInterval(controller.pollTimer);
+  if (controller.debugTimer) window.clearInterval(controller.debugTimer);
   controller.pollTimer = null;
+  controller.debugTimer = null;
 
   const reader = controller.reader;
   const writer = controller.writer;
@@ -165,6 +183,7 @@ async function readSerialFrames(controller) {
       if (done) break;
       if (!value) continue;
       controller.byteCount += value.byteLength;
+      notifyDebug(controller);
 
       for (const byte of value) {
         if (byte === FRAME_START) {
@@ -203,6 +222,7 @@ async function writeFrame(controller, frame) {
   if (!controller.writer) throw new Error("Serial port is not writable.");
   await controller.writer.write(frame);
   controller.writeCount += 1;
+  notifyDebug(controller);
 }
 
 function handleFrame(controller, payload) {
@@ -259,4 +279,8 @@ function toHexId(value) {
 function setSerialStatus(controller, status) {
   controller.status = status;
   controller.onStatus?.(controller);
+}
+
+function notifyDebug(controller) {
+  controller.onDebug?.(controller);
 }
