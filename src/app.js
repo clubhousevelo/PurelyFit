@@ -126,6 +126,8 @@ function bindElements() {
     "serialPortSelect",
     "refreshSerialPortsButton",
     "sensorConnectStatus",
+    "serialDebugPanel",
+    "serialDebugText",
     "resistanceStatus",
     "resistanceTargetInput",
     "resistanceTargetSlider",
@@ -221,7 +223,9 @@ function wireEvents() {
   state.serialPower.onStatus = () => {
     renderSensorConnectStatus();
     renderSensors();
+    renderSerialDebug();
   };
+  state.serialPower.onFrame = updateSerialDebug;
   state.serialPower.onMeasurement = updateSerialPowerSensorValue;
 }
 
@@ -680,6 +684,21 @@ function updateSerialPowerSensorValue(measurement) {
   renderAll(true);
 }
 
+function updateSerialDebug({ rawHex, measurement }) {
+  const sensor = state.activeSensors[SENSOR_TYPES.power];
+  if (sensor?.id === "powerbahn-usb-serial") {
+    sensor.connected = true;
+    sensor.live = true;
+    sensor.rawPacket = rawHex;
+    sensor.rawFrameCount = state.serialPower.frameCount;
+    sensor.parsedFrameCount = state.serialPower.parsedFrameCount;
+    sensor.lastSeen = new Date();
+    if (!measurement && sensor.value == null) sensor.value = null;
+  }
+  renderSerialDebug();
+  renderSensors();
+}
+
 async function connectBluetoothSensor(type) {
   const profile = BLUETOOTH_SENSOR_PROFILES[type];
   if (!profile) return;
@@ -803,6 +822,32 @@ function renderSensorConnectStatus() {
   elements.sensorConnectStatus.classList.toggle("busy", Boolean(state.sensorConnect.busyType));
 }
 
+function renderSerialDebug() {
+  if (!elements.serialDebugText) return;
+  const { serialPower } = state;
+  const measurement = serialPower.lastMeasurement;
+  const lastFrameAt = serialPower.lastFrameAt
+    ? serialPower.lastFrameAt.toLocaleTimeString()
+    : "never";
+  const parsedText = measurement
+    ? `parsed power=${measurement.power ?? "--"} cadence=${measurement.cadence ?? "--"}`
+    : "no parsed telemetry yet";
+  const rawText = serialPower.lastPacketHex
+    ? `last raw ${serialPower.lastPacketHex}`
+    : "no raw packet";
+
+  elements.serialDebugText.textContent = [
+    `frames ${serialPower.frameCount}`,
+    `parsed ${serialPower.parsedFrameCount}`,
+    `writes ${serialPower.writeCount}`,
+    `bytes ${serialPower.byteCount}`,
+    `last ${lastFrameAt}`,
+    parsedText,
+    rawText,
+  ].join(" · ");
+  elements.serialDebugPanel.classList.toggle("live", serialPower.frameCount > 0);
+}
+
 function getBluetoothConnectError(error, profile) {
   if (error.name === "NotFoundError") return `No ${profile.searchLabel} selected.`;
   if (error.name === "SecurityError") return "Bluetooth search was blocked by browser permissions.";
@@ -853,6 +898,7 @@ function renderSensors() {
           ${sensor.cadence == null ? "" : `<span>${sensor.cadence} RPM</span>`}
           ${sensor.balance == null ? "" : `<span>${sensor.balance}% L</span>`}
           ${sensor.battery == null ? "" : `<span>${sensor.battery}% battery</span>`}
+          ${sensor.rawFrameCount == null ? "" : `<span>${sensor.parsedFrameCount ?? 0}/${sensor.rawFrameCount} parsed frames</span>`}
           ${sensor.rawPacket == null ? "" : `<span title="${escapeHtml(sensor.rawPacket)}">serial packet</span>`}
         </div>
       </article>

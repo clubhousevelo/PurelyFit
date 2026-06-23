@@ -10,6 +10,13 @@ const COMMANDS = {
   heartRate: 0xd0,
 };
 
+const POWERBAHN_WAKE = new Uint8Array([
+  FRAME_START,
+  0x9f,
+  0x9f,
+  FRAME_END,
+]);
+
 const POWERBAHN_DASHBOARD_POLL = new Uint8Array([
   FRAME_START,
   COMMANDS.speed,
@@ -33,8 +40,15 @@ export function createSerialPowerController() {
     status: supported ? "Disconnected" : "Web Serial unavailable",
     lastError: null,
     lastPacketHex: null,
+    lastFrameAt: null,
+    lastMeasurement: null,
+    frameCount: 0,
+    parsedFrameCount: 0,
+    byteCount: 0,
+    writeCount: 0,
     pollTimer: null,
     readLoop: null,
+    onFrame: null,
     onMeasurement: null,
     onStatus: null,
   };
@@ -79,6 +93,7 @@ export async function connectSerialPower(controller, { port = null, portName = "
     });
   }, DASHBOARD_POLL_INTERVAL_MS);
 
+  await writeFrame(controller, POWERBAHN_WAKE);
   await writeFrame(controller, POWERBAHN_DASHBOARD_POLL);
   setSerialStatus(controller, `Connected to Powerbahn serial power${portLabel}`);
 }
@@ -149,6 +164,7 @@ async function readSerialFrames(controller) {
       const { value, done } = await reader.read();
       if (done) break;
       if (!value) continue;
+      controller.byteCount += value.byteLength;
 
       for (const byte of value) {
         if (byte === FRAME_START) {
@@ -186,12 +202,21 @@ async function readSerialFrames(controller) {
 async function writeFrame(controller, frame) {
   if (!controller.writer) throw new Error("Serial port is not writable.");
   await controller.writer.write(frame);
+  controller.writeCount += 1;
 }
 
 function handleFrame(controller, payload) {
   controller.lastPacketHex = toHex(payload);
+  controller.lastFrameAt = new Date();
+  controller.frameCount += 1;
   const measurement = parsePowerbahnDashboardPayload(payload);
-  if (!measurement) return;
+  if (!measurement) {
+    controller.onFrame?.({ payload, rawHex: controller.lastPacketHex, measurement: null });
+    return;
+  }
+  controller.parsedFrameCount += 1;
+  controller.lastMeasurement = measurement;
+  controller.onFrame?.({ payload, rawHex: controller.lastPacketHex, measurement });
   controller.onMeasurement?.(measurement);
 }
 

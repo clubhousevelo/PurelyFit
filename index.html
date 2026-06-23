@@ -130,6 +130,10 @@
             <button class="secondary-button" id="refreshSerialPortsButton" type="button">Refresh Ports</button>
           </div>
           <div class="sensor-connect-prompt" id="sensorConnectStatus" role="status" aria-live="polite">Ready to search Bluetooth sensors</div>
+          <div class="serial-debug-panel" id="serialDebugPanel" aria-live="polite">
+            <strong>Serial diagnostic</strong>
+            <span id="serialDebugText">No serial frames received yet.</span>
+          </div>
           <div class="sensor-grid" id="sensorCards"></div>
           <section class="resistance-panel">
             <div class="panel-heading">
