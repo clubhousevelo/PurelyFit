@@ -37,6 +37,7 @@ const SERIAL_BAUD_STORAGE_KEY = "purelyfit.serialBaud";
 const SERIAL_FLOW_STORAGE_KEY = "purelyfit.serialFlow";
 const SERIAL_DTR_STORAGE_KEY = "purelyfit.serialDtr";
 const SERIAL_RTS_STORAGE_KEY = "purelyfit.serialRts";
+const POWERBAHN_RELEASE_BAUD_RATE = 115200;
 
 const BLUETOOTH_SENSOR_PROFILES = {
   [SENSOR_TYPES.power]: {
@@ -74,7 +75,7 @@ const state = {
   serialPower: createSerialPowerController(),
   grantedSerialPorts: [],
   serialPortName: localStorage.getItem(SERIAL_PORT_STORAGE_KEY) || "COM7",
-  serialBaudRate: Number(localStorage.getItem(SERIAL_BAUD_STORAGE_KEY)) || 9600,
+  serialBaudRate: Number(localStorage.getItem(SERIAL_BAUD_STORAGE_KEY)) || POWERBAHN_RELEASE_BAUD_RATE,
   serialFlowControl: localStorage.getItem(SERIAL_FLOW_STORAGE_KEY) || "none",
   serialDtr: localStorage.getItem(SERIAL_DTR_STORAGE_KEY) !== "false",
   serialRts: localStorage.getItem(SERIAL_RTS_STORAGE_KEY) !== "false",
