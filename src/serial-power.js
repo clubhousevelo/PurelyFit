@@ -7,9 +7,20 @@ const OPEN_SETTLE_MS = 600;
 const COMMANDS = {
   speed: 0xa5,
   cadence: 0xa8,
+  gear: 0xa9,
   power: 0xb4,
   heartRate: 0xd0,
+  brakeRpm: 0xd2,
 };
+
+const DASHBOARD_RESPONSE_FIELDS = [
+  [COMMANDS.speed, 3],
+  [COMMANDS.cadence, 3],
+  [COMMANDS.gear, 1],
+  [COMMANDS.power, 3],
+  [COMMANDS.heartRate, 3],
+  [COMMANDS.brakeRpm, 2],
+];
 
 const POWERBAHN_WAKE = new Uint8Array([
   FRAME_START,
@@ -338,8 +349,10 @@ function handleFrame(controller, payload) {
 }
 
 function parsePowerbahnDashboardPayload(payload) {
+  if (!isDashboardPayload(payload)) return null;
+
   const values = new Map();
-  let index = payload[0] === 0x01 ? 1 : 0;
+  let index = 1;
 
   while (index < payload.length) {
     const command = payload[index];
@@ -361,8 +374,22 @@ function parsePowerbahnDashboardPayload(payload) {
     cadence: values.get(COMMANDS.cadence) ?? null,
     speedRaw: values.get(COMMANDS.speed) ?? null,
     heartRate: values.get(COMMANDS.heartRate) ?? null,
+    gear: values.get(COMMANDS.gear) ?? null,
+    brakeRpm: values.get(COMMANDS.brakeRpm) ?? null,
     rawHex: toHex(payload),
   };
+}
+
+function isDashboardPayload(payload) {
+  if (payload[0] !== 0x01) return false;
+  let index = 1;
+
+  for (const [command, byteCount] of DASHBOARD_RESPONSE_FIELDS) {
+    if (payload[index] !== command || payload[index + 1] !== byteCount) return false;
+    index += 2 + byteCount;
+  }
+
+  return index === payload.length;
 }
 
 function toHex(bytes) {
