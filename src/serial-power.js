@@ -418,7 +418,7 @@ function isDashboardPayload(payload) {
     index += 2 + byteCount;
   }
 
-  return index === payload.length;
+  return index === payload.length - 1;
 }
 
 function toHex(bytes) {
