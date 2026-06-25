@@ -3,8 +3,6 @@ const FRAME_START = 0xf1;
 const FRAME_END = 0xf2;
 const DASHBOARD_POLL_INTERVAL_MS = 300;
 const OPEN_SETTLE_MS = 600;
-const POWER_FILTER_COEFFICIENT = 0.92;
-const POWER_MOVING_AVERAGE_SIZE = 6;
 const SPEED_MPH_PER_RAW_UNIT = 0.621371 / 100;
 const BRAKE_RPM_TO_CADENCE_DIVISOR = 15.394;
 const GRADE_UPDATE_STATUS = 0x4c;
@@ -128,8 +126,6 @@ export function createSerialPowerController() {
     lastFrameAt: null,
     lastMeasurement: null,
     portInfo: null,
-    filteredPower: null,
-    powerMovingAverage: [],
     frameCount: 0,
     parsedFrameCount: 0,
     byteCount: 0,
@@ -473,23 +469,8 @@ export function parsePowerbahnDashboardPayload(payload) {
 }
 
 function applyPowerbahnDashboardInterpretation(controller, measurement) {
-  const rawPower = measurement.rawPower;
-  if (rawPower != null) {
-    controller.filteredPower = controller.filteredPower == null
-      ? rawPower
-      : (POWER_FILTER_COEFFICIENT * controller.filteredPower) +
-        ((1 - POWER_FILTER_COEFFICIENT) * rawPower);
-    controller.powerMovingAverage.push(controller.filteredPower);
-    while (controller.powerMovingAverage.length > POWER_MOVING_AVERAGE_SIZE) {
-      controller.powerMovingAverage.shift();
-    }
-    measurement.power = Math.round(average(controller.powerMovingAverage));
-    measurement.filteredPower = controller.filteredPower;
-  } else {
-    measurement.power = null;
-    measurement.filteredPower = null;
-  }
-
+  measurement.power = measurement.rawPower;
+  measurement.filteredPower = null;
   measurement.speedMph = measurement.speedRaw == null
     ? null
     : measurement.speedRaw * SPEED_MPH_PER_RAW_UNIT;
@@ -686,8 +667,6 @@ function resetSerialStats(controller) {
     lastFrameAt: null,
     lastMeasurement: null,
     portInfo: null,
-    filteredPower: null,
-    powerMovingAverage: [],
     frameCount: 0,
     parsedFrameCount: 0,
     byteCount: 0,
@@ -705,9 +684,4 @@ function resetSerialStats(controller) {
 
 function delay(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function average(values) {
-  if (!values.length) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }

@@ -85,7 +85,7 @@
                 <button class="secondary-button" id="disconnectSerialPowerButton">Disconnect</button>
               </div>
             </div>
-            <div class="serial-port-panel">
+            <div class="serial-port-panel" hidden>
               <label>
                 SerialPort
                 <input id="serialPortInput" name="serialPort" value="COM7" placeholder="COM7 or /dev/cu.usbserial" autocomplete="off">
@@ -123,8 +123,8 @@
               </label>
               <button class="secondary-button" id="refreshSerialPortsButton" type="button">Refresh Ports</button>
             </div>
-            <div class="sensor-connect-prompt" id="sensorConnectStatus" role="status" aria-live="polite">Ready to connect PowerBahn serial</div>
-            <div class="serial-debug-panel" id="serialDebugPanel" aria-live="polite">
+            <div class="sensor-connect-prompt" id="sensorConnectStatus" role="status" aria-live="polite" hidden>Ready to connect PowerBahn serial</div>
+            <div class="serial-debug-panel" id="serialDebugPanel" aria-live="polite" hidden>
               <strong>Serial diagnostic</strong>
               <span id="serialDebugText">No serial frames received yet.</span>
             </div>
