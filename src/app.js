@@ -34,6 +34,8 @@ const CADENCE_ROLLING_WINDOW_MS = 1000;
 const LIVE_HISTORY_WINDOW_MS = Math.max(POWER_ROLLING_WINDOW_MS, CADENCE_ROLLING_WINDOW_MS);
 const LIVE_GRAPH_SAMPLE_INTERVAL_MS = 3000;
 const CADENCE_ACTIVE_POWER_THRESHOLD_W = 5;
+const GRAPH_CADENCE_SCALE_RPM = 140;
+const GRAPH_SPEED_SCALE_MPH = 40;
 const SERIAL_PORT_STORAGE_KEY = "purelyfit.serialPort";
 const SERIAL_BAUD_STORAGE_KEY = "purelyfit.serialBaud";
 const SERIAL_FLOW_STORAGE_KEY = "purelyfit.serialFlow";
@@ -359,17 +361,11 @@ function drawTrend(canvas, history) {
   };
   const maxPower = getGraphPowerScale(history);
   drawGrid(ctx, chart, maxPower);
+  drawTrendLegend(ctx, chart, history.at(-1));
   if (history.length < 2) return;
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#2d6cdf";
-  ctx.beginPath();
-  history.forEach((sample, index) => {
-    const x = chart.left + (index / (history.length - 1)) * (chart.right - chart.left);
-    const y = chart.bottom - (sample.power / maxPower) * (chart.bottom - chart.top);
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
+  drawTrendSeries(ctx, chart, history, "power", maxPower, "#2d6cdf");
+  drawTrendSeries(ctx, chart, history, "cadence", GRAPH_CADENCE_SCALE_RPM, "#d96c2c");
+  drawTrendSeries(ctx, chart, history, "speed", GRAPH_SPEED_SCALE_MPH, "#178f62");
 }
 
 function getGraphPowerScale(history) {
@@ -398,6 +394,41 @@ function drawGrid(ctx, chart, maxPower) {
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.fillText("W", chart.left, chart.top - 2);
+}
+
+function drawTrendSeries(ctx, chart, history, key, scale, color) {
+  ctx.lineWidth = key === "power" ? 3 : 2;
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  history.forEach((sample, index) => {
+    const value = Math.max(0, Math.min(scale, sample[key] ?? 0));
+    const x = chart.left + (index / (history.length - 1)) * (chart.right - chart.left);
+    const y = chart.bottom - (value / scale) * (chart.bottom - chart.top);
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function drawTrendLegend(ctx, chart, latest) {
+  if (!latest) return;
+  const items = [
+    ["#2d6cdf", `${formatWholeNumber(latest.power)} W`],
+    ["#d96c2c", `${formatWholeNumber(latest.cadence)} RPM`],
+    ["#178f62", `${latest.speed == null ? "--" : latest.speed.toFixed(1)} mph`],
+  ];
+  ctx.font = "12px system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  let x = chart.left + 4;
+  const y = chart.top + 4;
+  items.forEach(([color, label]) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y + 4, 10, 3);
+    x += 16;
+    ctx.fillText(label, x, y);
+    x += ctx.measureText(label).width + 16;
+  });
 }
 
 function prepareCanvas(canvas) {
@@ -650,11 +681,15 @@ function updateGraphHistory() {
 
   const power = getRollingAverage("power", POWER_ROLLING_WINDOW_MS);
   if (power == null) return;
+  const cadence = getRollingAverage("cadence", CADENCE_ROLLING_WINDOW_MS) ?? 0;
+  const speed = state.activeSensors[SENSOR_TYPES.power]?.speed ?? 0;
 
   state.lastGraphSampleAt = now;
   state.graphHistory.push({
     at: new Date(),
     power,
+    cadence,
+    speed,
   });
   if (state.graphHistory.length > 240) state.graphHistory.shift();
 }
