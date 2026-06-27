@@ -461,9 +461,9 @@ th {
 .resistance-adjust-control {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 10px;
   align-items: stretch;
-  min-height: 70px;
+  min-height: 132px;
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -479,19 +479,19 @@ th {
 
 .resistance-adjust-readout span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .resistance-adjust-readout strong {
   color: var(--ink);
-  font-size: 24px;
+  font-size: 32px;
   line-height: 1;
 }
 
 .resistance-adjust-readout small {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -501,9 +501,10 @@ th {
 
 .fixed-power-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(104px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.8fr);
   gap: 10px;
-  align-items: end;
+  align-items: stretch;
+  min-height: 132px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -513,9 +514,14 @@ th {
 .fixed-power-toggle {
   display: flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 58px;
   gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
   color: var(--ink-soft);
+  font-weight: 800;
 }
 
 .fixed-power-toggle input {
@@ -524,32 +530,46 @@ th {
 }
 
 .fixed-power-controls span {
-  min-height: 40px;
+  min-height: 56px;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid rgba(15, 118, 110, 0.2);
+  border-radius: 8px;
+  background: #effaf8;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
 }
 
-.fixed-power-controls .secondary-button,
-.fixed-power-controls span {
-  grid-column: 1 / -1;
+.fixed-power-controls .secondary-button {
+  min-height: 56px;
+}
+
+.fixed-power-controls label:not(.fixed-power-toggle) {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
 }
 
 .stepper-control {
   display: grid;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, 56px);
   gap: 4px;
-  width: 44px;
-  align-self: stretch;
+  width: 56px;
+  align-self: center;
 }
 
 .stepper-control .secondary-button {
-  min-height: 0;
+  width: 56px;
+  height: 56px;
+  min-height: 56px;
   padding: 0;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 800;
 }
 
@@ -795,7 +815,7 @@ input {
   }
 
   .stepper-control {
-    width: 52px;
+    width: 56px;
   }
 
   .resistance-step-buttons {
