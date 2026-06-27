@@ -26,7 +26,7 @@
         <div class="connection-card">
           <span class="status-dot" id="statusDot"></span>
           <div>
-            <strong id="connectionStatus">PowerBahn offline</strong>
+            <strong id="connectionStatus">Powerbahn offline</strong>
             <span id="sampleCounter">No live frames</span>
           </div>
         </div>
@@ -35,11 +35,11 @@
       <main>
         <header class="topbar">
           <div>
-            <p class="eyebrow">PowerBahn live control</p>
+            <p class="eyebrow">Powerbahn live control</p>
             <h2 id="screenTitle">Dashboard</h2>
           </div>
           <div class="controls compact topbar-actions">
-            <button class="primary-button" id="useSerialPowerButton">Connect PowerBahn</button>
+            <button class="primary-button" id="useSerialPowerButton">Connect Powerbahn</button>
             <button class="secondary-button" id="disconnectSerialPowerButton">Disconnect</button>
           </div>
         </header>
@@ -103,7 +103,7 @@
               </label>
               <button class="secondary-button" id="refreshSerialPortsButton" type="button">Refresh Ports</button>
             </div>
-            <div class="sensor-connect-prompt" id="sensorConnectStatus" role="status" aria-live="polite" hidden>Ready to connect PowerBahn serial</div>
+            <div class="sensor-connect-prompt" id="sensorConnectStatus" role="status" aria-live="polite" hidden>Ready to connect Powerbahn serial</div>
             <div class="serial-debug-panel" id="serialDebugPanel" aria-live="polite" hidden>
               <strong>Serial diagnostic</strong>
               <span id="serialDebugText">No serial frames received yet.</span>
@@ -114,50 +114,52 @@
             <section class="powerbahn-control-panel">
               <div class="panel-heading">
                 <div>
-                  <h3>PowerBahn Resistance</h3>
+                  <h3>Powerbahn Resistance</h3>
                   <span id="powerbahnControlStatus">Grade and gear staged</span>
                 </div>
                 <button class="secondary-button panel-action-button" id="resetPowerbahnResistanceButton">Reset</button>
               </div>
-              <div class="grade-gear-controls">
-                <div class="resistance-adjust-control">
-                  <div class="resistance-adjust-readout">
-                    <span>Grade</span>
-                    <strong id="gradeValue">--%</strong>
-                    <small id="gradeTargetValue">target 0%</small>
-                  </div>
-                  <div class="stepper-control" aria-label="Adjust grade">
-                    <button class="secondary-button" data-grade-step="-1">-</button>
-                    <button class="secondary-button" data-grade-step="1">+</button>
-                  </div>
-                  <input id="powerbahnGradeInput" type="hidden" min="0" max="25" step="1" value="0" />
-                  <button class="secondary-button" id="applyPowerbahnGradeButton" hidden>Apply Grade</button>
+              <div class="powerbahn-resistance-grid">
+                <div class="fixed-power-controls">
+                  <label class="fixed-power-toggle">
+                    <input id="powerbahnFixedPowerEnabledInput" type="checkbox" />
+                    Fixed power resistance
+                  </label>
+                  <label>
+                    Target watts
+                    <input id="powerbahnFixedPowerInput" type="number" min="0" max="1000" step="5" value="150" />
+                  </label>
+                  <button class="secondary-button" id="applyPowerbahnFixedPowerButton">Apply Fixed Power</button>
+                  <span id="powerbahnFixedPowerState">fixed power off</span>
                 </div>
-                <div class="resistance-adjust-control">
-                  <div class="resistance-adjust-readout">
-                    <span>Gear</span>
-                    <strong id="gearValue">--</strong>
-                    <small id="gearTargetValue">target 0</small>
+                <div class="grade-gear-controls">
+                  <div class="resistance-adjust-control">
+                    <div class="resistance-adjust-readout">
+                      <span>Grade</span>
+                      <strong id="gradeValue">--%</strong>
+                      <small id="gradeTargetValue">target 0%</small>
+                    </div>
+                    <div class="stepper-control" aria-label="Adjust grade">
+                      <button class="secondary-button" data-grade-step="-1">-</button>
+                      <button class="secondary-button" data-grade-step="1">+</button>
+                    </div>
+                    <input id="powerbahnGradeInput" type="hidden" min="0" max="25" step="1" value="0" />
+                    <button class="secondary-button" id="applyPowerbahnGradeButton" hidden>Apply Grade</button>
                   </div>
-                  <div class="stepper-control" aria-label="Adjust gear">
-                    <button class="secondary-button" data-gear-step="-1">-</button>
-                    <button class="secondary-button" data-gear-step="1">+</button>
+                  <div class="resistance-adjust-control">
+                    <div class="resistance-adjust-readout">
+                      <span>Gear</span>
+                      <strong id="gearValue">--</strong>
+                      <small id="gearTargetValue">target 0</small>
+                    </div>
+                    <div class="stepper-control" aria-label="Adjust gear">
+                      <button class="secondary-button" data-gear-step="-1">-</button>
+                      <button class="secondary-button" data-gear-step="1">+</button>
+                    </div>
+                    <input id="powerbahnGearInput" type="hidden" min="0" max="255" step="1" value="0" />
+                    <button class="secondary-button" id="applyPowerbahnGearButton" hidden>Apply Gear</button>
                   </div>
-                  <input id="powerbahnGearInput" type="hidden" min="0" max="255" step="1" value="0" />
-                  <button class="secondary-button" id="applyPowerbahnGearButton" hidden>Apply Gear</button>
                 </div>
-              </div>
-              <div class="fixed-power-controls">
-                <label class="fixed-power-toggle">
-                  <input id="powerbahnFixedPowerEnabledInput" type="checkbox" />
-                  Fixed power resistance
-                </label>
-                <label>
-                  Target watts
-                  <input id="powerbahnFixedPowerInput" type="number" min="0" max="1000" step="5" value="150" />
-                </label>
-                <button class="secondary-button" id="applyPowerbahnFixedPowerButton">Apply Fixed Power</button>
-                <span id="powerbahnFixedPowerState">fixed power off</span>
               </div>
             </section>
           </div>
@@ -252,7 +254,7 @@
               </div>
             </div>
           </section>
-          <div class="note">PowerBahn serial is controlled from the dashboard. Bluetooth LE and ANT+ remain here for later external power and heart-rate sensor support.</div>
+          <div class="note">Powerbahn serial is controlled from the dashboard. Bluetooth LE and ANT+ remain here for later external power and heart-rate sensor support.</div>
         </section>
 
         <section class="panel" id="sessionsPanel">
@@ -308,7 +310,7 @@
             <label>Capture interval<input id="captureTimeInput" type="number" value="3" min="1" /></label>
             <label>Power filter coefficient<input id="filterInput" type="number" value="0.92" min="0" max="1" step="0.01" /></label>
           </div>
-          <div class="note">Hardware source: live PowerBahn serial, with optional external sensors.</div>
+          <div class="note">Hardware source: live Powerbahn serial, with optional external sensors.</div>
         </section>
       </main>
     </div>

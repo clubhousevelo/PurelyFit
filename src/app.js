@@ -327,7 +327,7 @@ function renderAll(force) {
   elements.powerValue.textContent = displayPower == null ? "-- W" : `${Math.round(displayPower)} W`;
   elements.powerAverage.textContent = powerSensor
     ? `${powerSensor.name} · 3 sec avg · raw ${formatWholeNumber(rawPower)} W`
-    : "Waiting for live PowerBahn power";
+    : "Waiting for live Powerbahn power";
   elements.cadenceValue.textContent = formatWholeUnit(displayCadence, "RPM");
   elements.cadenceAverage.textContent = displayCadence == null
     ? "1 sec avg -- RPM"
@@ -992,8 +992,8 @@ function updateSourceButtons() {
   elements.useSerialPowerButton.textContent = busyType === SENSOR_TYPES.power
     ? "Connecting..."
     : state.serialPower.connected
-      ? "PowerBahn Connected"
-      : "Connect PowerBahn";
+      ? "Powerbahn Connected"
+      : "Connect Powerbahn";
   elements.useBluetoothPowerButton.textContent = busyType === SENSOR_TYPES.power
     ? "Searching..."
     : "Search BLE Power";
@@ -1083,7 +1083,7 @@ async function runPowerbahnControlAction(action) {
     await action();
   } catch (error) {
     state.serialPower.lastError = error.message;
-    setSensorConnectStatus(`PowerBahn control failed: ${error.message}`, { error: true });
+    setSensorConnectStatus(`Powerbahn control failed: ${error.message}`, { error: true });
   } finally {
     renderPowerbahnControl();
     renderSensorConnectStatus();
@@ -1112,7 +1112,7 @@ function renderPowerbahnConnectionStatus() {
   const { serialPower } = state;
   const isConnected = serialPower.connected;
   const hasTelemetry = serialPower.parsedFrameCount > 0;
-  elements.connectionStatus.textContent = isConnected ? "PowerBahn connected" : "PowerBahn offline";
+  elements.connectionStatus.textContent = isConnected ? "Powerbahn connected" : "Powerbahn offline";
   elements.sampleCounter.textContent = hasTelemetry ? "Live ride data" : "Waiting for ride data";
   elements.powerbahnSerialStatus.textContent = serialPower.lastError
     ? `Connection error: ${serialPower.lastError}`

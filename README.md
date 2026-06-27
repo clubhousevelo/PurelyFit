@@ -5,13 +5,13 @@ Hardware-first prototype for a clean-room replacement of the legacy PurelyCustom
 ## Current scope
 
 - Runs locally in a browser with no build step.
-- Reads live PowerBahn telemetry over Web Serial.
+- Reads live Powerbahn telemetry over Web Serial.
 - Renders live power, cadence, speed, grade, gear, brake RPM, and a power trend.
-- Controls PowerBahn grade, gear, and fixed-power resistance through the recovered legacy serial commands.
+- Controls Powerbahn grade, gear, and fixed-power resistance through the recovered legacy serial commands.
 - Keeps session/customer scaffolding available for later ride recording work.
 - Uses canvas charts and throttled rendering so telemetry updates do not force a full UI redraw for every packet.
 - Displays power as a rolling 3-second average while preserving the current raw power in the sublabel.
-- Keeps optional Bluetooth LE and ANT+ power/heart-rate sensor hooks outside the main PowerBahn dashboard.
+- Keeps optional Bluetooth LE and ANT+ power/heart-rate sensor hooks outside the main Powerbahn dashboard.
 
 ## Run
 
