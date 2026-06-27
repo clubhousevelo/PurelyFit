@@ -126,6 +126,7 @@ function bindElements() {
     "powerbahnFixedPowerInput",
     "applyPowerbahnFixedPowerButton",
     "powerbahnFixedPowerState",
+    "resetPowerbahnResistanceButton",
     "sessionRows",
     "customerRows",
     "recordSessionButton",
@@ -245,6 +246,7 @@ function wireEvents() {
   elements.powerbahnFixedPowerEnabledInput.addEventListener("change", applyPowerbahnFixedPower);
   elements.powerbahnFixedPowerInput.addEventListener("input", syncPowerbahnFixedPowerControls);
   elements.applyPowerbahnFixedPowerButton.addEventListener("click", applyPowerbahnFixedPower);
+  elements.resetPowerbahnResistanceButton.addEventListener("click", resetPowerbahnResistance);
   document.querySelectorAll("[data-grade-step]").forEach((button) => {
     button.addEventListener("click", () => adjustPowerbahnGrade(Number(button.dataset.gradeStep)));
   });
@@ -1058,6 +1060,23 @@ async function applyPowerbahnFixedPower() {
   ));
 }
 
+async function resetPowerbahnResistance() {
+  const targetPower = normalizePowerbahnFixedPower(elements.powerbahnFixedPowerInput.value);
+  state.serialPower.targetGrade = 0;
+  state.serialPower.targetGear = 0;
+  state.serialPower.targetFixedPower = targetPower;
+  state.serialPower.fixedPowerEnabled = false;
+  elements.powerbahnGradeInput.value = 0;
+  elements.powerbahnGearInput.value = 0;
+  elements.powerbahnFixedPowerInput.value = targetPower;
+  elements.powerbahnFixedPowerEnabledInput.checked = false;
+  await runPowerbahnControlAction(async () => {
+    await setSerialFixedPower(state.serialPower, false, targetPower);
+    await setSerialGrade(state.serialPower, 0);
+    await setSerialGear(state.serialPower, 0);
+  });
+}
+
 async function runPowerbahnControlAction(action) {
   renderPowerbahnControl();
   try {
@@ -1130,6 +1149,7 @@ function renderPowerbahnControl() {
   elements.powerbahnFixedPowerEnabledInput.disabled = unsupported;
   elements.powerbahnFixedPowerInput.disabled = unsupported;
   elements.applyPowerbahnFixedPowerButton.disabled = unsupported;
+  elements.resetPowerbahnResistanceButton.disabled = unsupported;
   document.querySelectorAll("[data-grade-step], [data-gear-step]").forEach((button) => {
     button.disabled = gradeGearDisabled;
   });

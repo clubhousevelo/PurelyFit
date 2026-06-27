@@ -297,6 +297,11 @@ main {
   margin-bottom: 12px;
 }
 
+.panel-action-button {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
 canvas {
   display: block;
   width: 100%;
