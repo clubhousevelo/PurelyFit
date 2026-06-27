@@ -163,10 +163,12 @@ input {
 
 main {
   min-width: 0;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: clamp(16px, 2vw, 28px);
+  overflow: hidden;
+  padding: clamp(12px, 1.6vw, 24px);
 }
 
 .topbar {
@@ -270,7 +272,7 @@ main {
 .metric {
   display: grid;
   gap: 6px;
-  min-height: clamp(96px, 14vh, 132px);
+  min-height: clamp(88px, 13vh, 120px);
   place-items: center;
   padding: clamp(12px, 1.8vh, 18px);
   text-align: center;
@@ -291,8 +293,8 @@ main {
 #dashboardPanel.panel.active {
   flex: 1 1 auto;
   display: grid;
-  grid-template-rows: auto auto minmax(150px, 1fr);
-  gap: clamp(10px, 1.8vh, 14px);
+  grid-template-rows: auto auto minmax(80px, 1fr);
+  gap: clamp(8px, 1.4vh, 14px);
   min-height: 0;
 }
 
@@ -302,7 +304,7 @@ main {
 }
 
 .chart-panel {
-  padding: 16px;
+  padding: clamp(10px, 1.4vh, 16px);
 }
 
 .trend-panel {
@@ -319,7 +321,7 @@ main {
 .trend-panel canvas {
   flex: 1 1 auto;
   height: 100%;
-  min-height: 120px;
+  min-height: 72px;
 }
 
 .hardware-panel,
@@ -873,5 +875,57 @@ input {
   .controls {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+@media (max-height: 760px) {
+  main {
+    padding: 10px 14px;
+  }
+
+  .topbar {
+    margin-bottom: 10px;
+  }
+
+  #dashboardPanel.panel.active {
+    gap: 8px;
+  }
+
+  .metric {
+    min-height: 82px;
+    padding: 10px 12px;
+  }
+
+  .metric strong {
+    font-size: clamp(26px, 3vw, 40px);
+  }
+
+  .powerbahn-control-panel {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .resistance-adjust-control,
+  .fixed-power-controls {
+    min-height: 118px;
+  }
+
+  .stepper-control {
+    grid-template-rows: repeat(2, 50px);
+    width: 50px;
+  }
+
+  .stepper-control .secondary-button {
+    width: 50px;
+    height: 50px;
+    min-height: 50px;
+  }
+
+  .chart-panel {
+    padding: 10px 12px;
+  }
+
+  .trend-panel canvas {
+    min-height: 56px;
   }
 }
