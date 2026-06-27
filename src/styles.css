@@ -462,8 +462,8 @@ th {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
-  align-items: center;
-  min-height: 62px;
+  align-items: stretch;
+  min-height: 70px;
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -473,6 +473,8 @@ th {
 .resistance-adjust-readout {
   display: grid;
   gap: 2px;
+  place-content: center;
+  text-align: center;
 }
 
 .resistance-adjust-readout span {
@@ -494,7 +496,7 @@ th {
 }
 
 .resistance-adjust-control .stepper-control .secondary-button {
-  min-height: 34px;
+  min-height: 0;
 }
 
 .fixed-power-controls {
@@ -538,12 +540,14 @@ th {
 
 .stepper-control {
   display: grid;
-  grid-template-columns: repeat(2, 42px);
-  gap: 6px;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 44px;
+  align-self: stretch;
 }
 
 .stepper-control .secondary-button {
-  min-height: 40px;
+  min-height: 0;
   padding: 0;
   font-size: 20px;
   font-weight: 800;
@@ -791,7 +795,7 @@ input {
   }
 
   .stepper-control {
-    grid-template-columns: repeat(2, minmax(42px, 1fr));
+    width: 52px;
   }
 
   .resistance-step-buttons {
