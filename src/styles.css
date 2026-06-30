@@ -373,7 +373,7 @@ main {
 }
 
 .gauge-metric > strong {
-  transform: translateY(7px);
+  margin: 8px 0 6px;
 }
 
 .gauge-metric > small {
