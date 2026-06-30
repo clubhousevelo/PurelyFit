@@ -743,7 +743,7 @@ th {
 
 .grade-gear-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  grid-template-columns: repeat(2, minmax(150px, 1fr)) auto;
   gap: 10px;
   align-items: stretch;
 }
@@ -758,10 +758,6 @@ th {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-soft);
-}
-
-.gear-adjust-control {
-  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
 .resistance-adjust-readout {
@@ -856,12 +852,12 @@ th {
   display: grid;
   grid-template-rows: repeat(2, 62px);
   gap: 4px;
-  width: 48px;
+  width: 120px;
   align-self: center;
 }
 
 .stepper-control .secondary-button {
-  width: 48px;
+  width: 120px;
   height: 62px;
   min-height: 62px;
   padding: 0;
@@ -873,7 +869,7 @@ th {
   display: grid;
   place-items: center;
   align-self: stretch;
-  width: 42px;
+  width: 44px;
   min-height: 0;
   padding: 0;
 }
@@ -1175,11 +1171,11 @@ input {
 
   .stepper-control {
     grid-template-rows: repeat(2, 54px);
-    width: 46px;
+    width: 115px;
   }
 
   .stepper-control .secondary-button {
-    width: 46px;
+    width: 115px;
     height: 54px;
     min-height: 54px;
   }
