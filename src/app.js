@@ -486,16 +486,21 @@ function drawTrendLegend(ctx, chart, latest) {
 }
 
 function updatePedalAnalysis(analysis) {
+  if (isPedalAnalysisFrozen()) {
+    renderPedalAnalysis();
+    return;
+  }
   state.pedalAnalysis = analysis;
   renderPedalAnalysis();
 }
 
 function renderPedalAnalysis() {
   const analysis = state.pedalAnalysis;
+  const frozen = isPedalAnalysisFrozen();
   drawPedalDynamics(elements.pedalCanvas, analysis);
 
   if (!analysis) {
-    elements.pedalStatus.textContent = state.serialPower.connected ? "collecting" : "waiting";
+    elements.pedalStatus.textContent = frozen ? "frozen at 0 RPM" : state.serialPower.connected ? "collecting" : "waiting";
     elements.pedalBalanceValue.textContent = "-- / --";
     elements.pedalPeakValue.textContent = "--";
     elements.pedalDeadSpotValue.textContent = "--";
@@ -503,13 +508,37 @@ function renderPedalAnalysis() {
     return;
   }
 
-  elements.pedalStatus.textContent = analysis.complete
-    ? `${analysis.referenceSource} · rev ${analysis.rotationCount}`
-    : `collecting ${analysis.rangeCount}/6`;
+  elements.pedalStatus.textContent = getPedalAnalysisStatus(analysis, frozen);
   elements.pedalBalanceValue.textContent = `${Math.round(analysis.leftShare)} / ${Math.round(analysis.rightShare)}`;
   elements.pedalPeakValue.textContent = `${Math.round(analysis.peakTorque)} @ ${analysis.peakAngle}°`;
-  elements.pedalDeadSpotValue.textContent = `${analysis.splitAngle}°`;
+  elements.pedalDeadSpotValue.textContent = `${analysis.quietestAngle ?? analysis.splitAngle}°`;
   elements.pedalAverageValue.textContent = Math.round(analysis.averageTorque).toString();
+}
+
+function getPedalAnalysisStatus(analysis, frozen) {
+  const status = analysis.complete
+    ? `${analysis.referenceSource} ${analysis.splitAngle}° · rev ${analysis.rotationCount}`
+    : `collecting ${analysis.rangeCount}/6`;
+  return frozen ? `frozen at 0 RPM · ${status}` : status;
+}
+
+function isPedalAnalysisFrozen() {
+  if (!state.serialPower.connected) return false;
+  const cadence = getPedalAnalysisCadence();
+  return cadence != null && cadence <= 0;
+}
+
+function getPedalAnalysisCadence() {
+  const sensor = state.activeSensors[SENSOR_TYPES.power];
+  if (sensor?.id === "powerbahn-usb-serial" && Number.isFinite(sensor.cadence)) {
+    return sensor.cadence;
+  }
+
+  const measurement = state.lastTelemetry;
+  if (!measurement) return null;
+  const rawPower = measurement.rawPower ?? measurement.power;
+  if (rawPower != null && rawPower <= CADENCE_ACTIVE_POWER_THRESHOLD_W) return 0;
+  return Number.isFinite(measurement.cadence) ? measurement.cadence : null;
 }
 
 function drawPedalDynamics(canvas, analysis) {
@@ -552,6 +581,14 @@ function drawPolarGrid(ctx, centerX, centerY, radius) {
     ctx.moveTo(centerX, centerY);
     ctx.lineTo(point.x, point.y);
     ctx.stroke();
+  });
+  ctx.fillStyle = getCssColor("--muted");
+  ctx.font = "11px system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  [0, 90, 180, 270].forEach((angle) => {
+    const point = polarPoint(centerX, centerY, radius + 14, angle);
+    ctx.fillText(`${angle}°`, point.x, point.y);
   });
 }
 
