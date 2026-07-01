@@ -352,7 +352,6 @@ main {
 .metric,
 .chart-panel,
 .hardware-panel,
-.powerbahn-control-panel,
 .table-wrap,
 .form-panel,
 .sensor-card,
@@ -634,11 +633,16 @@ main {
   line-height: 1;
 }
 
-.hardware-panel,
-.powerbahn-control-panel {
+.hardware-panel {
   display: grid;
   gap: 10px;
   padding: 12px;
+}
+
+.powerbahn-control-panel {
+  display: grid;
+  gap: 0;
+  padding: 0;
 }
 
 .hardware-panel {
@@ -1229,8 +1233,8 @@ input {
   }
 
   .powerbahn-control-panel {
-    gap: 10px;
-    padding: 12px;
+    gap: 0;
+    padding: 0;
   }
 
   .resistance-adjust-control,
