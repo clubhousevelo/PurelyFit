@@ -19,7 +19,7 @@
         <nav class="nav">
           <button class="nav-item active" data-panel="dashboard">Dashboard</button>
           <button class="nav-item" data-panel="sensors">Sensors</button>
-          <button class="nav-item" data-panel="sessions">Sessions</button>
+          <button class="nav-item" data-panel="sessions">Trials</button>
           <button class="nav-item" data-panel="customers">Customers</button>
           <button class="nav-item" data-panel="settings">Settings</button>
         </nav>
@@ -211,10 +211,47 @@
               </div>
             </section>
           </div>
+          <section class="trial-recorder-panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Trials</h3>
+                <span id="trialStatus">Ready to record</span>
+              </div>
+              <div class="controls compact">
+                <button class="primary-button" id="trialRecordButton" type="button">Record Trial</button>
+                <button class="secondary-button" id="clearTrialSelectionButton" type="button">Live Graph</button>
+              </div>
+            </div>
+            <div class="trial-recorder-grid">
+              <label class="trial-notes-field">
+                Notes
+                <textarea id="trialNotesInput" rows="3" placeholder="Short notes for this trial"></textarea>
+              </label>
+              <div class="trial-summary-grid">
+                <article>
+                  <span>Avg power</span>
+                  <strong id="trialAvgPower">-- W</strong>
+                </article>
+                <article>
+                  <span>Avg cadence</span>
+                  <strong id="trialAvgCadence">-- RPM</strong>
+                </article>
+                <article>
+                  <span>Avg speed</span>
+                  <strong id="trialAvgSpeed">-- mph</strong>
+                </article>
+                <article>
+                  <span>Pedaling avg</span>
+                  <strong id="trialPedalAverage">--</strong>
+                </article>
+              </div>
+              <div class="trial-list" id="trialList" aria-label="Recorded trials"></div>
+            </div>
+          </section>
           <div class="live-analysis-grid">
             <section class="chart-panel trend-panel">
               <div class="panel-heading">
-                <h3>Live Power Trend</h3>
+                <h3 id="trendTitle">Live Power Trend</h3>
                 <span id="trendStatus">waiting</span>
               </div>
               <canvas id="trendCanvas" width="1200" height="240"></canvas>
@@ -336,21 +373,23 @@
 
         <section class="panel" id="sessionsPanel">
           <div class="table-toolbar">
-            <h3>Recorded Sessions</h3>
-            <button class="secondary-button" id="recordSessionButton">Save Live Snapshot</button>
+            <h3>Recorded Trials</h3>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Session</th>
+                  <th>Trial</th>
                   <th>Date</th>
                   <th>Avg Power</th>
                   <th>Avg Cadence</th>
+                  <th>Avg Speed</th>
+                  <th>Pedaling Avg</th>
                   <th>Samples</th>
+                  <th>Notes</th>
                 </tr>
               </thead>
-              <tbody id="sessionRows"></tbody>
+              <tbody id="trialRows"></tbody>
             </table>
           </div>
         </section>

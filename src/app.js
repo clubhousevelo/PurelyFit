@@ -44,9 +44,12 @@ const SERIAL_FLOW_STORAGE_KEY = "purelyfit.serialFlow";
 const SERIAL_DTR_STORAGE_KEY = "purelyfit.serialDtr";
 const SERIAL_RTS_STORAGE_KEY = "purelyfit.serialRts";
 const THEME_STORAGE_KEY = "purelyfit.theme";
+const TRIALS_STORAGE_KEY = "purelyfit.trials";
 const POWERBAHN_RELEASE_BAUD_RATE = 115200;
 const POWERBAHN_FIXED_POWER_MAX = 1000;
 const POWERBAHN_GEAR_MAX = 13;
+const MAX_SAVED_TRIALS = 20;
+const MAX_TRIAL_SAMPLES = 3600;
 
 const BLUETOOTH_SENSOR_PROFILES = {
   [SENSOR_TYPES.power]: {
@@ -93,7 +96,11 @@ const state = {
     error: false,
   },
   resistance: createResistanceController(),
-  sessions: [],
+  trials: loadRecordedTrials(),
+  selectedTrialId: null,
+  trialNoteDraft: "",
+  activeTrial: null,
+  trialClockTimer: null,
   customers: [
     { firstName: "Sample", lastName: "Rider", email: "sample@local.test", phone: "555-0100" },
   ],
@@ -120,6 +127,7 @@ function bindElements() {
     "speedRawValue",
     "gradeValue",
     "gearValue",
+    "trendTitle",
     "trendStatus",
     "trendCanvas",
     "pedalStatus",
@@ -142,9 +150,17 @@ function bindElements() {
     "applyPowerbahnPureLogicFixedPowerButton",
     "powerbahnPureLogicFixedPowerState",
     "resetPowerbahnResistanceButton",
-    "sessionRows",
+    "trialStatus",
+    "trialRecordButton",
+    "clearTrialSelectionButton",
+    "trialNotesInput",
+    "trialAvgPower",
+    "trialAvgCadence",
+    "trialAvgSpeed",
+    "trialPedalAverage",
+    "trialList",
+    "trialRows",
     "customerRows",
-    "recordSessionButton",
     "customerForm",
     "sensorCards",
     "useSerialPowerButton",
@@ -191,7 +207,10 @@ function wireEvents() {
   elements.darkModeToggle.addEventListener("change", () => {
     setTheme(elements.darkModeToggle.checked ? "dark" : "light");
   });
-  elements.recordSessionButton.addEventListener("click", () => recordSession("Live Snapshot"));
+  elements.trialRecordButton.addEventListener("click", toggleTrialRecording);
+  elements.clearTrialSelectionButton.addEventListener("click", clearTrialSelection);
+  elements.trialNotesInput.addEventListener("input", updateTrialNotes);
+  elements.trialList.addEventListener("click", handleTrialListClick);
   elements.customerForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -380,14 +399,17 @@ function renderAll(force) {
   elements.speedRawValue.textContent = powerSensor?.speedRaw == null ? "raw --" : `raw ${Math.round(powerSensor.speedRaw)}`;
   elements.gradeValue.textContent = displayGrade == null ? "--%" : `${displayGrade.toFixed(1)}%`;
   elements.gearValue.textContent = displayGear == null ? "--" : String(Math.round(displayGear));
-  elements.trendStatus.textContent = state.serialPower.connected ? "live" : "waiting";
+  const trendView = getTrendView();
+  elements.trendTitle.textContent = trendView.title;
+  elements.trendStatus.textContent = trendView.status;
 
-  drawTrend(elements.trendCanvas, state.graphHistory);
+  drawTrend(elements.trendCanvas, trendView.history);
   renderPedalAnalysis();
   renderSensors();
   renderSensorConnectStatus();
   renderPowerbahnControl();
   renderResistanceControl();
+  renderTrials();
 }
 
 function updateMetricGauge(element, value, max) {
@@ -497,6 +519,7 @@ function updatePedalAnalysis(analysis) {
     return;
   }
   state.pedalAnalysis = analysis;
+  recordTrialPedalSnapshot(analysis);
   renderPedalAnalysis();
 }
 
@@ -653,16 +676,287 @@ function getCanvasSize(canvas) {
   };
 }
 
-function recordSession(name) {
-  const history = state.history;
-  state.sessions.unshift({
-    name,
-    date: new Date().toLocaleString(),
-    power: Math.round(average(history, "power")),
-    cadence: Math.round(average(history, "cadence")),
-    samples: history.length,
+function toggleTrialRecording() {
+  if (state.activeTrial) {
+    stopTrialRecording();
+    return;
+  }
+  startTrialRecording();
+}
+
+function startTrialRecording() {
+  const now = new Date();
+  state.selectedTrialId = null;
+  state.activeTrial = {
+    id: createTrialId(),
+    name: `Trial ${state.trials.length + 1}`,
+    startedAt: now.toISOString(),
+    endedAt: null,
+    notes: elements.trialNotesInput.value.trim(),
+    samples: [],
+    pedalSnapshots: [],
+  };
+
+  const latestSample = state.history.at(-1);
+  if (latestSample) recordTrialSample(latestSample);
+  if (state.pedalAnalysis) recordTrialPedalSnapshot(state.pedalAnalysis);
+  startTrialClock();
+  renderAll(true);
+}
+
+function stopTrialRecording() {
+  const trial = state.activeTrial;
+  if (!trial) return;
+
+  trial.endedAt = new Date().toISOString();
+  trial.notes = elements.trialNotesInput.value.trim();
+  state.activeTrial = null;
+  stopTrialClock();
+
+  if (!trial.samples.length && !trial.pedalSnapshots.length) {
+    state.trialNoteDraft = trial.notes;
+    renderAll(true);
+    return;
+  }
+
+  state.trials.unshift(trial);
+  state.trials = state.trials.slice(0, MAX_SAVED_TRIALS);
+  state.selectedTrialId = trial.id;
+  state.trialNoteDraft = "";
+  saveRecordedTrials();
+  renderAll(true);
+}
+
+function startTrialClock() {
+  stopTrialClock();
+  state.trialClockTimer = window.setInterval(renderTrials, 1000);
+}
+
+function stopTrialClock() {
+  if (!state.trialClockTimer) return;
+  window.clearInterval(state.trialClockTimer);
+  state.trialClockTimer = null;
+}
+
+function updateTrialNotes() {
+  const notes = elements.trialNotesInput.value;
+  if (state.activeTrial) {
+    state.activeTrial.notes = notes;
+    return;
+  }
+
+  const selectedTrial = getSelectedTrial();
+  if (selectedTrial) {
+    selectedTrial.notes = notes;
+    saveRecordedTrials();
+    renderTrialRows();
+    return;
+  }
+
+  state.trialNoteDraft = notes;
+}
+
+function clearTrialSelection() {
+  state.selectedTrialId = null;
+  if (!state.activeTrial) state.trialNoteDraft = elements.trialNotesInput.value;
+  renderAll(true);
+}
+
+function handleTrialListClick(event) {
+  const button = event.target.closest("[data-trial-id]");
+  if (!button || state.activeTrial) return;
+  state.selectedTrialId = button.dataset.trialId;
+  renderAll(true);
+}
+
+function getTrendView() {
+  const selectedTrial = getSelectedTrial();
+  if (selectedTrial) {
+    return {
+      title: "Trial Power Trend",
+      history: selectedTrial.samples,
+      status: `${selectedTrial.name} · ${formatTrialDuration(selectedTrial)}`,
+    };
+  }
+  return {
+    title: "Live Power Trend",
+    history: state.graphHistory,
+    status: state.serialPower.connected ? "live" : "waiting",
+  };
+}
+
+function recordTrialSample(sample) {
+  const trial = state.activeTrial;
+  if (!trial) return;
+
+  trial.samples.push({
+    at: toIsoString(sample.at),
+    power: finiteOrZero(sample.power),
+    cadence: finiteOrZero(sample.cadence),
+    speed: finiteOrZero(sample.speed),
+    grade: finiteOrZero(sample.grade),
+    gear: finiteOrZero(sample.gear),
   });
-  renderSessions();
+
+  if (trial.samples.length > MAX_TRIAL_SAMPLES) {
+    trial.samples.splice(0, trial.samples.length - MAX_TRIAL_SAMPLES);
+  }
+}
+
+function recordTrialPedalSnapshot(analysis) {
+  const trial = state.activeTrial;
+  if (!trial || !analysis) return;
+
+  const snapshot = {
+    at: new Date().toISOString(),
+    leftShare: finiteOrNull(analysis.leftShare),
+    rightShare: finiteOrNull(analysis.rightShare),
+    peakTorque: finiteOrNull(analysis.peakTorque),
+    peakAngle: finiteOrNull(analysis.peakAngle),
+    quietestAngle: finiteOrNull(analysis.quietestAngle ?? analysis.splitAngle),
+    averageTorque: finiteOrNull(analysis.averageTorque),
+    splitAngle: finiteOrNull(analysis.splitAngle),
+    complete: Boolean(analysis.complete),
+  };
+
+  trial.pedalSnapshots.push(snapshot);
+}
+
+function getTrialSummary(trial) {
+  if (!trial) return null;
+  const pedal = averagePedalSnapshots(trial.pedalSnapshots ?? []);
+  return {
+    power: averageMetric(trial.samples, "power"),
+    cadence: averageMetric(trial.samples, "cadence"),
+    speed: averageMetric(trial.samples, "speed"),
+    samples: trial.samples?.length ?? 0,
+    pedal,
+  };
+}
+
+function averageMetric(items = [], key) {
+  const values = items
+    .map((item) => item?.[key])
+    .filter((value) => Number.isFinite(value));
+  if (!values.length) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function averagePedalSnapshots(snapshots) {
+  if (!snapshots.length) return null;
+  return {
+    count: snapshots.length,
+    leftShare: averageMetric(snapshots, "leftShare"),
+    rightShare: averageMetric(snapshots, "rightShare"),
+    peakTorque: averageMetric(snapshots, "peakTorque"),
+    peakAngle: averageAngle(snapshots, "peakAngle"),
+    quietestAngle: averageAngle(snapshots, "quietestAngle"),
+    averageTorque: averageMetric(snapshots, "averageTorque"),
+    splitAngle: averageAngle(snapshots, "splitAngle"),
+  };
+}
+
+function averageAngle(items, key) {
+  const values = items
+    .map((item) => item?.[key])
+    .filter((value) => Number.isFinite(value));
+  if (!values.length) return null;
+
+  const vector = values.reduce((acc, value) => {
+    const radians = (value * Math.PI) / 180;
+    acc.x += Math.cos(radians);
+    acc.y += Math.sin(radians);
+    return acc;
+  }, { x: 0, y: 0 });
+
+  return (Math.atan2(vector.y, vector.x) * 180 / Math.PI + 360) % 360;
+}
+
+function getSelectedTrial() {
+  if (!state.selectedTrialId) return null;
+  return state.trials.find((trial) => trial.id === state.selectedTrialId) ?? null;
+}
+
+function getTrialForSummary() {
+  return state.activeTrial ?? getSelectedTrial();
+}
+
+function loadRecordedTrials() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TRIALS_STORAGE_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeTrial).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function normalizeTrial(trial) {
+  if (!trial || typeof trial !== "object") return null;
+  const samples = Array.isArray(trial.samples) ? trial.samples : [];
+  const pedalSnapshots = Array.isArray(trial.pedalSnapshots) ? trial.pedalSnapshots : [];
+  return {
+    id: trial.id || createTrialId(),
+    name: trial.name || "Trial",
+    startedAt: trial.startedAt || new Date().toISOString(),
+    endedAt: trial.endedAt || trial.startedAt || new Date().toISOString(),
+    notes: trial.notes || "",
+    samples: samples.map(normalizeTrialSample).filter(Boolean),
+    pedalSnapshots: pedalSnapshots.map(normalizePedalSnapshot).filter(Boolean),
+  };
+}
+
+function normalizeTrialSample(sample) {
+  if (!sample || typeof sample !== "object") return null;
+  return {
+    at: toIsoString(sample.at),
+    power: finiteOrZero(sample.power),
+    cadence: finiteOrZero(sample.cadence),
+    speed: finiteOrZero(sample.speed),
+    grade: finiteOrZero(sample.grade),
+    gear: finiteOrZero(sample.gear),
+  };
+}
+
+function normalizePedalSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") return null;
+  return {
+    at: toIsoString(snapshot.at),
+    leftShare: finiteOrNull(snapshot.leftShare),
+    rightShare: finiteOrNull(snapshot.rightShare),
+    peakTorque: finiteOrNull(snapshot.peakTorque),
+    peakAngle: finiteOrNull(snapshot.peakAngle),
+    quietestAngle: finiteOrNull(snapshot.quietestAngle),
+    averageTorque: finiteOrNull(snapshot.averageTorque),
+    splitAngle: finiteOrNull(snapshot.splitAngle),
+    complete: Boolean(snapshot.complete),
+  };
+}
+
+function saveRecordedTrials() {
+  try {
+    localStorage.setItem(TRIALS_STORAGE_KEY, JSON.stringify(state.trials));
+  } catch (error) {
+    console.warn("Unable to save trials locally", error);
+  }
+}
+
+function createTrialId() {
+  return globalThis.crypto?.randomUUID?.() ?? `trial-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function finiteOrZero(value) {
+  return Number.isFinite(value) ? value : 0;
+}
+
+function finiteOrNull(value) {
+  return Number.isFinite(value) ? value : null;
+}
+
+function toIsoString(value) {
+  if (value instanceof Date) return value.toISOString();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
 }
 
 function updatePowerDisplayHistory() {
@@ -861,7 +1155,7 @@ function updateSerialPowerSensorValue(measurement) {
   sensor.rawPacket = measurement.rawHex;
   state.lastTelemetry = measurement;
   state.tick += 1;
-  state.history.push({
+  const sample = {
     at: sensor.lastSeen,
     power: measurement.rawPower ?? 0,
     rawPower: measurement.rawPower ?? 0,
@@ -871,8 +1165,10 @@ function updateSerialPowerSensorValue(measurement) {
     gear: measurement.gear ?? 0,
     brakeRpm: measurement.brakeRpm ?? 0,
     crankAngle: measurement.crankAngle ?? 0,
-  });
+  };
+  state.history.push(sample);
   if (state.history.length > 240) state.history.shift();
+  recordTrialSample(sample);
 
   updatePowerDisplayHistory();
   updateGraphHistory();
@@ -1528,18 +1824,129 @@ function renderResistanceControl() {
     : `Stage ${resistance.targetPower} W`;
 }
 
-function renderSessions() {
-  elements.sessionRows.innerHTML = state.sessions
-    .map((session) => `
-      <tr>
-        <td>${escapeHtml(session.name)}</td>
-        <td>${escapeHtml(session.date)}</td>
-        <td>${session.power} W</td>
-        <td>${session.cadence} RPM</td>
-        <td>${session.samples}</td>
-      </tr>
-    `)
+function renderTrials() {
+  const focusedTrial = getTrialForSummary();
+  const summary = getTrialSummary(focusedTrial);
+  const selectedTrial = getSelectedTrial();
+  const activeTrial = state.activeTrial;
+
+  elements.trialRecordButton.textContent = activeTrial ? "Stop Trial" : "Record Trial";
+  elements.trialRecordButton.classList.toggle("recording", Boolean(activeTrial));
+  elements.clearTrialSelectionButton.disabled = !selectedTrial;
+  elements.trialStatus.textContent = getTrialStatusText(activeTrial, selectedTrial);
+
+  if (document.activeElement !== elements.trialNotesInput) {
+    elements.trialNotesInput.value = focusedTrial?.notes ?? state.trialNoteDraft;
+  }
+
+  elements.trialAvgPower.textContent = formatTrialPower(summary?.power);
+  elements.trialAvgCadence.textContent = formatTrialCadence(summary?.cadence);
+  elements.trialAvgSpeed.textContent = formatTrialSpeed(summary?.speed);
+  elements.trialPedalAverage.textContent = formatTrialPedalAverage(summary?.pedal, { compact: true });
+
+  renderTrialList();
+  renderTrialRows();
+}
+
+function getTrialStatusText(activeTrial, selectedTrial) {
+  if (activeTrial) {
+    return `Recording · ${formatTrialDuration(activeTrial)} · ${activeTrial.samples.length} samples`;
+  }
+  if (selectedTrial) {
+    return `Viewing ${selectedTrial.name} · ${formatTrialDuration(selectedTrial)}`;
+  }
+  return state.trials.length
+    ? `${state.trials.length} saved trial${state.trials.length === 1 ? "" : "s"}`
+    : "Ready to record";
+}
+
+function renderTrialList() {
+  if (!state.trials.length) {
+    elements.trialList.innerHTML = '<div class="empty-state">No trials recorded yet</div>';
+    return;
+  }
+
+  elements.trialList.innerHTML = state.trials
+    .map((trial) => {
+      const summary = getTrialSummary(trial);
+      const isSelected = trial.id === state.selectedTrialId;
+      return `
+        <button class="trial-card${isSelected ? " selected" : ""}" data-trial-id="${escapeHtml(trial.id)}" type="button"${state.activeTrial ? " disabled" : ""}>
+          <span>${escapeHtml(trial.name)}</span>
+          <strong>${formatTrialPower(summary?.power)} · ${formatTrialSpeed(summary?.speed)}</strong>
+          <small>${formatTrialDate(trial.startedAt)} · ${formatTrialDuration(trial)}</small>
+        </button>
+      `;
+    })
     .join("");
+}
+
+function renderTrialRows() {
+  if (!state.trials.length) {
+    elements.trialRows.innerHTML = '<tr><td colspan="8" class="empty-table-cell">No trials recorded yet</td></tr>';
+    return;
+  }
+
+  elements.trialRows.innerHTML = state.trials
+    .map((trial) => {
+      const summary = getTrialSummary(trial);
+      return `
+        <tr>
+          <td>${escapeHtml(trial.name)}</td>
+          <td>${formatTrialDate(trial.startedAt)}</td>
+          <td>${formatTrialPower(summary?.power)}</td>
+          <td>${formatTrialCadence(summary?.cadence)}</td>
+          <td>${formatTrialSpeed(summary?.speed)}</td>
+          <td>${escapeHtml(formatTrialPedalAverage(summary?.pedal))}</td>
+          <td>${summary?.samples ?? 0}</td>
+          <td class="trial-note-cell">${escapeHtml(trial.notes || "--")}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function formatTrialPower(value) {
+  return value == null ? "-- W" : `${Math.round(value)} W`;
+}
+
+function formatTrialCadence(value) {
+  return value == null ? "-- RPM" : `${Math.round(value)} RPM`;
+}
+
+function formatTrialSpeed(value) {
+  return value == null ? "-- mph" : `${value.toFixed(1)} mph`;
+}
+
+function formatTrialPedalAverage(pedal, options = {}) {
+  if (!pedal?.count) return "--";
+  const balance = pedal.leftShare == null || pedal.rightShare == null
+    ? "--/--"
+    : `${Math.round(pedal.leftShare)}/${Math.round(pedal.rightShare)}`;
+  const torque = pedal.averageTorque == null ? "--" : Math.round(pedal.averageTorque);
+  const peak = pedal.peakTorque == null ? "--" : Math.round(pedal.peakTorque);
+  if (options.compact) {
+    return `${balance} · ${torque} avg`;
+  }
+  return `${balance} · avg ${torque} · peak ${peak}`;
+}
+
+function formatTrialDate(value) {
+  return new Date(value).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatTrialDuration(trial) {
+  const start = new Date(trial.startedAt).getTime();
+  const end = trial.endedAt ? new Date(trial.endedAt).getTime() : Date.now();
+  const totalSeconds = Math.max(0, Math.round((end - start) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function renderCustomers() {
@@ -1558,7 +1965,7 @@ function setPanel(panelName) {
   const titleByPanel = {
     dashboard: "Live Dashboard",
     sensors: "Sensors",
-    sessions: "Sessions",
+    sessions: "Trials",
     customers: "Customers",
     settings: "Settings",
   };
