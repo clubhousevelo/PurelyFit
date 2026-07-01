@@ -1071,10 +1071,10 @@ th {
 .fixed-power-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
   align-items: stretch;
-  min-height: 132px;
-  padding: 10px;
+  min-height: 0;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -1082,10 +1082,10 @@ th {
 
 .fixed-power-mode-card {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(108px, 0.65fr);
   gap: 8px;
-  align-content: stretch;
-  padding: 8px;
+  align-items: stretch;
+  padding: 7px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -1093,19 +1093,40 @@ th {
 
 .fixed-power-mode-card .fixed-power-toggle,
 .fixed-power-mode-card > span {
-  grid-column: 1 / -1;
+  grid-column: auto;
+}
+
+.fixed-power-mode-card .fixed-power-toggle {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.fixed-power-mode-card label:not(.fixed-power-toggle) {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.fixed-power-mode-card .secondary-button {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.fixed-power-mode-card > span {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .fixed-power-toggle {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 38px;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink-soft);
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -1115,32 +1136,41 @@ th {
 }
 
 .fixed-power-controls span {
-  min-height: 42px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 1px solid rgba(15, 118, 110, 0.2);
   border-radius: 8px;
   background: var(--panel-tint);
   color: var(--muted);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   text-align: center;
   white-space: normal;
 }
 
 .fixed-power-controls .secondary-button {
-  min-height: 42px;
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .fixed-power-controls label:not(.fixed-power-toggle) {
   display: grid;
-  align-content: start;
-  gap: 6px;
-  font-size: 13px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--muted);
+}
+
+.fixed-power-controls input[type="number"] {
+  min-height: 38px;
 }
 
 .stepper-control {
@@ -1441,6 +1471,18 @@ input {
     justify-content: flex-start;
   }
 
+  .fixed-power-mode-card {
+    grid-template-columns: 1fr;
+  }
+
+  .fixed-power-mode-card .fixed-power-toggle,
+  .fixed-power-mode-card label:not(.fixed-power-toggle),
+  .fixed-power-mode-card .secondary-button,
+  .fixed-power-mode-card > span {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
   .trial-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1494,6 +1536,10 @@ input {
   .resistance-adjust-control,
   .fixed-power-controls {
     min-height: 118px;
+  }
+
+  .fixed-power-controls {
+    min-height: 0;
   }
 
   .stepper-control {
