@@ -16,6 +16,7 @@ import {
   setSerialFixedPower,
   setSerialGear,
   setSerialGrade,
+  setSerialPureLogicFixedPower,
 } from "./serial-power.js";
 import {
   clampPower,
@@ -138,6 +139,10 @@ function bindElements() {
     "powerbahnFixedPowerInput",
     "applyPowerbahnFixedPowerButton",
     "powerbahnFixedPowerState",
+    "powerbahnPureLogicFixedPowerEnabledInput",
+    "powerbahnPureLogicFixedPowerInput",
+    "applyPowerbahnPureLogicFixedPowerButton",
+    "powerbahnPureLogicFixedPowerState",
     "resetPowerbahnResistanceButton",
     "sessionRows",
     "customerRows",
@@ -262,6 +267,9 @@ function wireEvents() {
   elements.powerbahnFixedPowerEnabledInput.addEventListener("change", applyPowerbahnFixedPower);
   elements.powerbahnFixedPowerInput.addEventListener("input", syncPowerbahnFixedPowerControls);
   elements.applyPowerbahnFixedPowerButton.addEventListener("click", applyPowerbahnFixedPower);
+  elements.powerbahnPureLogicFixedPowerEnabledInput.addEventListener("change", applyPowerbahnPureLogicFixedPower);
+  elements.powerbahnPureLogicFixedPowerInput.addEventListener("input", syncPowerbahnPureLogicFixedPowerControls);
+  elements.applyPowerbahnPureLogicFixedPowerButton.addEventListener("click", applyPowerbahnPureLogicFixedPower);
   elements.resetPowerbahnResistanceButton.addEventListener("click", resetPowerbahnResistance);
   document.querySelectorAll("[data-grade-step]").forEach((button) => {
     button.addEventListener("click", () => adjustPowerbahnGrade(Number(button.dataset.gradeStep)));
@@ -330,6 +338,8 @@ function initializeSerialPortControls() {
   elements.powerbahnGearInput.value = state.serialPower.targetGear;
   elements.powerbahnFixedPowerEnabledInput.checked = state.serialPower.fixedPowerEnabled;
   elements.powerbahnFixedPowerInput.value = state.serialPower.targetFixedPower;
+  elements.powerbahnPureLogicFixedPowerEnabledInput.checked = state.serialPower.pureLogicFixedPowerEnabled;
+  elements.powerbahnPureLogicFixedPowerInput.value = state.serialPower.targetPureLogicFixedPower;
 }
 
 function getCurrentSample() {
@@ -1065,7 +1075,7 @@ function renderSerialDebug() {
     serialPower.signals ?? "signals not set",
     serialPower.encryptionSeedHex ? `seed ${serialPower.encryptionSeedHex}` : "seed pending",
     `torque ${serialPower.torqueFrameCount ?? 0} frames`,
-    serialPower.fixedPowerEnabled ? `fixed ${serialPower.targetFixedPower} W` : "fixed off",
+    getSerialFixedPowerDebugText(serialPower),
     serialPower.startupStep ? `startup ${serialPower.startupStep}` : "startup pending",
     `last ${lastFrameAt}`,
     parsedText,
@@ -1191,6 +1201,13 @@ function syncPowerbahnFixedPowerControls() {
   renderPowerbahnControl();
 }
 
+function syncPowerbahnPureLogicFixedPowerControls() {
+  const targetPower = normalizePowerbahnFixedPower(elements.powerbahnPureLogicFixedPowerInput.value);
+  state.serialPower.targetPureLogicFixedPower = targetPower;
+  elements.powerbahnPureLogicFixedPowerInput.value = targetPower;
+  renderPowerbahnControl();
+}
+
 function adjustPowerbahnGrade(delta) {
   elements.powerbahnGradeInput.value = normalizePowerbahnGrade(
     state.serialPower.targetGrade + delta,
@@ -1224,26 +1241,65 @@ async function applyPowerbahnFixedPower() {
   const enabled = elements.powerbahnFixedPowerEnabledInput.checked;
   state.serialPower.targetFixedPower = targetPower;
   state.serialPower.fixedPowerEnabled = enabled;
+  if (enabled) {
+    state.serialPower.pureLogicFixedPowerEnabled = false;
+    elements.powerbahnPureLogicFixedPowerEnabledInput.checked = false;
+  }
   elements.powerbahnFixedPowerInput.value = targetPower;
-  await runPowerbahnControlAction(() => setSerialFixedPower(
-    state.serialPower,
-    enabled,
-    targetPower,
-  ));
+  await runPowerbahnControlAction(async () => {
+    if (enabled) {
+      const pureLogicTargetPower = normalizePowerbahnFixedPower(elements.powerbahnPureLogicFixedPowerInput.value);
+      await setSerialPureLogicFixedPower(state.serialPower, false, pureLogicTargetPower);
+    }
+    await setSerialFixedPower(
+      state.serialPower,
+      enabled,
+      targetPower,
+    );
+  });
+}
+
+async function applyPowerbahnPureLogicFixedPower() {
+  const targetPower = normalizePowerbahnFixedPower(elements.powerbahnPureLogicFixedPowerInput.value);
+  const enabled = elements.powerbahnPureLogicFixedPowerEnabledInput.checked;
+  state.serialPower.targetPureLogicFixedPower = targetPower;
+  state.serialPower.pureLogicFixedPowerEnabled = enabled;
+  if (enabled) {
+    state.serialPower.fixedPowerEnabled = false;
+    elements.powerbahnFixedPowerEnabledInput.checked = false;
+  }
+  elements.powerbahnPureLogicFixedPowerInput.value = targetPower;
+  await runPowerbahnControlAction(async () => {
+    if (enabled) {
+      const directTargetPower = normalizePowerbahnFixedPower(elements.powerbahnFixedPowerInput.value);
+      await setSerialFixedPower(state.serialPower, false, directTargetPower);
+    }
+    await setSerialPureLogicFixedPower(
+      state.serialPower,
+      enabled,
+      targetPower,
+    );
+  });
 }
 
 async function resetPowerbahnResistance() {
   const targetPower = normalizePowerbahnFixedPower(elements.powerbahnFixedPowerInput.value);
+  const pureLogicTargetPower = normalizePowerbahnFixedPower(elements.powerbahnPureLogicFixedPowerInput.value);
   state.serialPower.targetGrade = 0;
   state.serialPower.targetGear = 0;
   state.serialPower.targetFixedPower = targetPower;
   state.serialPower.fixedPowerEnabled = false;
+  state.serialPower.targetPureLogicFixedPower = pureLogicTargetPower;
+  state.serialPower.pureLogicFixedPowerEnabled = false;
   elements.powerbahnGradeInput.value = 0;
   elements.powerbahnGearInput.value = 0;
   elements.powerbahnFixedPowerInput.value = targetPower;
   elements.powerbahnFixedPowerEnabledInput.checked = false;
+  elements.powerbahnPureLogicFixedPowerInput.value = pureLogicTargetPower;
+  elements.powerbahnPureLogicFixedPowerEnabledInput.checked = false;
   await runPowerbahnControlAction(async () => {
     await setSerialFixedPower(state.serialPower, false, targetPower);
+    await setSerialPureLogicFixedPower(state.serialPower, false, pureLogicTargetPower);
     await setSerialGrade(state.serialPower, 0);
     await setSerialGear(state.serialPower, 0);
   });
@@ -1302,8 +1358,11 @@ function renderPowerbahnControl() {
   elements.powerbahnFixedPowerEnabledInput.checked = Boolean(serialPower.fixedPowerEnabled);
   elements.powerbahnFixedPowerInput.value = serialPower.targetFixedPower;
   elements.powerbahnFixedPowerState.textContent = activeFixedPowerText;
+  elements.powerbahnPureLogicFixedPowerEnabledInput.checked = Boolean(serialPower.pureLogicFixedPowerEnabled);
+  elements.powerbahnPureLogicFixedPowerInput.value = serialPower.targetPureLogicFixedPower;
+  elements.powerbahnPureLogicFixedPowerState.textContent = getAppliedPureLogicFixedPowerText(serialPower);
   const unsupported = !serialPower.supported;
-  const gradeGearDisabled = unsupported || serialPower.fixedPowerEnabled;
+  const gradeGearDisabled = unsupported || serialPower.fixedPowerEnabled || serialPower.pureLogicFixedPowerEnabled;
   elements.powerbahnGradeInput.disabled = gradeGearDisabled;
   elements.powerbahnGearInput.disabled = gradeGearDisabled;
   elements.applyPowerbahnGradeButton.disabled = gradeGearDisabled;
@@ -1311,6 +1370,9 @@ function renderPowerbahnControl() {
   elements.powerbahnFixedPowerEnabledInput.disabled = unsupported;
   elements.powerbahnFixedPowerInput.disabled = unsupported;
   elements.applyPowerbahnFixedPowerButton.disabled = unsupported;
+  elements.powerbahnPureLogicFixedPowerEnabledInput.disabled = unsupported;
+  elements.powerbahnPureLogicFixedPowerInput.disabled = unsupported;
+  elements.applyPowerbahnPureLogicFixedPowerButton.disabled = unsupported;
   elements.resetPowerbahnResistanceButton.disabled = unsupported;
   document.querySelectorAll("[data-grade-step], [data-gear-step]").forEach((button) => {
     button.disabled = gradeGearDisabled;
@@ -1318,18 +1380,44 @@ function renderPowerbahnControl() {
 }
 
 function getAppliedFixedPowerText(serialPower) {
-  if (serialPower.activeFixedPower == null) {
-    return serialPower.fixedPowerEnabled
-      ? `staged ${serialPower.targetFixedPower} W`
+  return getAppliedPowerModeText({
+    enabled: serialPower.fixedPowerEnabled,
+    target: serialPower.targetFixedPower,
+    active: serialPower.activeFixedPower,
+  });
+}
+
+function getAppliedPureLogicFixedPowerText(serialPower) {
+  return getAppliedPowerModeText({
+    enabled: serialPower.pureLogicFixedPowerEnabled,
+    target: serialPower.targetPureLogicFixedPower,
+    active: serialPower.activePureLogicFixedPower,
+  });
+}
+
+function getAppliedPowerModeText({ enabled, target, active }) {
+  if (active == null) {
+    return enabled
+      ? `staged ${target} W`
       : "applied off";
   }
-  if (!serialPower.fixedPowerEnabled || serialPower.activeFixedPower === 0) {
+  if (!enabled || active === 0) {
     return "applied off";
   }
-  if (serialPower.activeFixedPower !== serialPower.targetFixedPower) {
-    return `applied ${serialPower.activeFixedPower} W · pending ${serialPower.targetFixedPower} W`;
+  if (active !== target) {
+    return `applied ${active} W · pending ${target} W`;
   }
-  return `applied ${serialPower.activeFixedPower} W`;
+  return `applied ${active} W`;
+}
+
+function getSerialFixedPowerDebugText(serialPower) {
+  if (serialPower.fixedPowerEnabled) {
+    return `fixed current ${serialPower.targetFixedPower} W`;
+  }
+  if (serialPower.pureLogicFixedPowerEnabled) {
+    return `fixed PureLogic ${serialPower.targetPureLogicFixedPower} W`;
+  }
+  return "fixed off";
 }
 
 function syncResistanceTarget(event) {

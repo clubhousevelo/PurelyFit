@@ -9,6 +9,8 @@ const BRAKE_RPM_TO_CADENCE_DIVISOR = 15.394;
 const GRADE_UPDATE_STATUS = 0x4c;
 const POWER_UPDATE_UNIT = 0x58;
 const EXTRA_CONFIGURATION_COMMAND = 0x1a;
+const AUTO_POWER_PARAMETER_ID = 0x67;
+const AUTO_POWER_RESERVED_BYTE = 0x00;
 const POWERBAHN_CAPTURED_ENCRYPTION_SEED = 0xc788;
 const FIXED_POWER_MAX = 1000;
 const GEAR_MAX = 13;
@@ -148,6 +150,9 @@ export function createSerialPowerController() {
     targetFixedPower: 150,
     fixedPowerEnabled: false,
     activeFixedPower: null,
+    targetPureLogicFixedPower: 150,
+    pureLogicFixedPowerEnabled: false,
+    activePureLogicFixedPower: null,
     torqueProfile: Array(TORQUE_PROFILE_SIZE).fill(0),
     torqueRangeMask: 0,
     torqueFrameCount: 0,
@@ -292,6 +297,26 @@ export async function setSerialFixedPower(controller, enabled, watts) {
     : "Fixed power released");
 }
 
+export async function setSerialPureLogicFixedPower(controller, enabled, watts) {
+  const targetPower = clampFixedPower(watts);
+  const fixedPowerEnabled = Boolean(enabled);
+  const autoPower = fixedPowerEnabled ? targetPower : 0;
+  controller.targetPureLogicFixedPower = targetPower;
+  controller.pureLogicFixedPowerEnabled = fixedPowerEnabled;
+
+  if (!controller.connected || !controller.writer) {
+    const stagedText = fixedPowerEnabled ? `${targetPower} W` : "off";
+    setSerialStatus(controller, `PureLogic fixed power staged ${stagedText}`);
+    return;
+  }
+
+  await sendAutoPowerExtraConfiguration(controller, autoPower);
+  controller.activePureLogicFixedPower = autoPower;
+  setSerialStatus(controller, fixedPowerEnabled
+    ? `PureLogic fixed power set to ${targetPower} W`
+    : "PureLogic fixed power released");
+}
+
 export async function getGrantedSerialPorts() {
   if (typeof navigator === "undefined" || !navigator.serial) return [];
   return navigator.serial.getPorts();
@@ -352,6 +377,7 @@ export async function disconnectSerialPower(controller) {
   controller.activeGrade = null;
   controller.activeGear = null;
   controller.activeFixedPower = null;
+  controller.activePureLogicFixedPower = null;
   setSerialStatus(controller, controller.supported ? "Disconnected" : "Web Serial unavailable");
 }
 
@@ -427,6 +453,12 @@ async function sendStartupSequence(controller) {
     controller.startupStep = "fixed power";
     await sendPowerUpdate(controller, targetPower);
     controller.activeFixedPower = targetPower;
+  }
+  if (controller.pureLogicFixedPowerEnabled) {
+    const targetPower = clampFixedPower(controller.targetPureLogicFixedPower);
+    controller.startupStep = "PureLogic fixed power";
+    await sendAutoPowerExtraConfiguration(controller, targetPower);
+    controller.activePureLogicFixedPower = targetPower;
   }
   controller.startupStep = "polling";
 }
@@ -705,6 +737,20 @@ async function sendPowerUpdate(controller, watts) {
   await writeFrame(controller, createLongCommandFrame(
     COMMANDS.setPower,
     lowHighBytes(targetPower, POWER_UPDATE_UNIT),
+  ));
+}
+
+async function sendAutoPowerExtraConfiguration(controller, watts) {
+  const targetPower = clampFixedPower(watts);
+  await writeFrame(controller, createEncryptedLongCommandFrame(
+    EXTRA_CONFIGURATION_COMMAND,
+    [
+      AUTO_POWER_PARAMETER_ID,
+      AUTO_POWER_RESERVED_BYTE,
+      targetPower & 0xff,
+      (targetPower >> 8) & 0xff,
+    ],
+    getEncryptionSeed(controller),
   ));
 }
 

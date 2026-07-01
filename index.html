@@ -156,16 +156,30 @@
             <section class="powerbahn-control-panel">
               <div class="powerbahn-resistance-grid">
                 <div class="fixed-power-controls">
-                  <label class="fixed-power-toggle">
-                    <input id="powerbahnFixedPowerEnabledInput" type="checkbox" />
-                    Fixed power resistance (experimental)
-                  </label>
-                  <label>
-                    Target watts
-                    <input id="powerbahnFixedPowerInput" type="number" min="0" max="1000" step="5" value="150" />
-                  </label>
-                  <button class="secondary-button" id="applyPowerbahnFixedPowerButton">Apply Fixed Power</button>
-                  <span id="powerbahnFixedPowerState">fixed power off</span>
+                  <div class="fixed-power-mode-card">
+                    <label class="fixed-power-toggle">
+                      <input id="powerbahnFixedPowerEnabledInput" type="checkbox" />
+                      Current fixed power (experimental)
+                    </label>
+                    <label>
+                      Target watts
+                      <input id="powerbahnFixedPowerInput" type="number" min="0" max="1000" step="5" value="150" />
+                    </label>
+                    <button class="secondary-button" id="applyPowerbahnFixedPowerButton">Apply Current</button>
+                    <span id="powerbahnFixedPowerState">applied off</span>
+                  </div>
+                  <div class="fixed-power-mode-card">
+                    <label class="fixed-power-toggle">
+                      <input id="powerbahnPureLogicFixedPowerEnabledInput" type="checkbox" />
+                      PureLogic style (experimental)
+                    </label>
+                    <label>
+                      Target watts
+                      <input id="powerbahnPureLogicFixedPowerInput" type="number" min="0" max="1000" step="5" value="150" />
+                    </label>
+                    <button class="secondary-button" id="applyPowerbahnPureLogicFixedPowerButton">Apply PureLogic</button>
+                    <span id="powerbahnPureLogicFixedPowerState">applied off</span>
+                  </div>
                 </div>
                 <div class="grade-gear-controls">
                   <div class="resistance-adjust-control">

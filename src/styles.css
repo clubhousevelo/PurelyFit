@@ -862,7 +862,7 @@ th {
 
 .fixed-power-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.8fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   align-items: stretch;
   min-height: 132px;
@@ -872,10 +872,26 @@ th {
   background: var(--panel);
 }
 
+.fixed-power-mode-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-content: stretch;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.fixed-power-mode-card .fixed-power-toggle,
+.fixed-power-mode-card > span {
+  grid-column: 1 / -1;
+}
+
 .fixed-power-toggle {
   display: flex;
   align-items: center;
-  min-height: 58px;
+  min-height: 44px;
   gap: 8px;
   padding: 0 12px;
   border: 1px solid var(--line);
@@ -891,7 +907,7 @@ th {
 }
 
 .fixed-power-controls span {
-  min-height: 56px;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -907,7 +923,7 @@ th {
 }
 
 .fixed-power-controls .secondary-button {
-  min-height: 56px;
+  min-height: 42px;
 }
 
 .fixed-power-controls label:not(.fixed-power-toggle) {
