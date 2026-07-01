@@ -215,6 +215,21 @@ main {
   margin-bottom: clamp(12px, 2vh, 24px);
 }
 
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.topbar-logo {
+  display: block;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+}
+
 .eyebrow {
   margin-bottom: 3px;
   font-size: 12px;
