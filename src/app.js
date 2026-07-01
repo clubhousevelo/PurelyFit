@@ -1963,7 +1963,7 @@ function renderCustomers() {
 
 function setPanel(panelName) {
   const titleByPanel = {
-    dashboard: "Live Dashboard",
+    dashboard: "CleanLogic Dashboard",
     sensors: "Sensors",
     sessions: "Trials",
     customers: "Customers",
