@@ -536,10 +536,6 @@ function drawTrendLatestValues(ctx, chart, latest) {
 }
 
 function updatePedalAnalysis(analysis) {
-  if (state.pedalAnalysis && isPedalAnalysisFrozen()) {
-    renderPedalAnalysis();
-    return;
-  }
   state.pedalAnalysis = analysis;
   recordTrialPedalSnapshot(analysis);
   renderPedalAnalysis();
