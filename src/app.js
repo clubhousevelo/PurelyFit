@@ -566,10 +566,17 @@ function renderPedalAnalysis() {
     return;
   }
 
-  elements.pedalBalanceValue.textContent = `${Math.round(analysis.leftShare)} / ${Math.round(analysis.rightShare)}`;
+  elements.pedalBalanceValue.textContent = formatPedalBalance(analysis);
   elements.pedalPeakValue.textContent = `${Math.round(analysis.peakTorque)} @ ${analysis.peakAngle}°`;
   elements.pedalDeadSpotValue.textContent = `${analysis.quietestAngle ?? analysis.splitAngle}°`;
   elements.pedalAverageValue.textContent = Math.round(analysis.averageTorque).toString();
+}
+
+function formatPedalBalance(analysis) {
+  if (!Number.isFinite(analysis?.leftShare) || !Number.isFinite(analysis?.rightShare)) {
+    return "-- / --";
+  }
+  return `${Math.round(analysis.leftShare)} / ${Math.round(analysis.rightShare)}`;
 }
 
 function getPedalAnalysisStatus(analysis, frozen) {

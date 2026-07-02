@@ -582,11 +582,9 @@ function analyzeTorqueProfile(profile, { complete, rangeCount, rotationCount, cr
     }
   }
 
-  const referenceAngle = Number.isFinite(crankAngle)
-    ? normalizeAngle(crankAngle)
-    : quietestAngle;
-  const leftValues = collectTorqueHalf(smoothedProfile, referenceAngle);
-  const rightValues = collectTorqueHalf(smoothedProfile, referenceAngle + 180);
+  const splitAngle = quietestAngle;
+  const leftValues = collectTorqueHalf(smoothedProfile, splitAngle);
+  const rightValues = collectTorqueHalf(smoothedProfile, splitAngle + 180);
   const leftWork = leftValues.reduce((sum, value) => sum + value, 0);
   const rightWork = rightValues.reduce((sum, value) => sum + value, 0);
   const totalWork = leftWork + rightWork;
@@ -600,13 +598,14 @@ function analyzeTorqueProfile(profile, { complete, rangeCount, rotationCount, cr
     peakTorque,
     peakAngle,
     averageTorque,
-    splitAngle: referenceAngle,
+    splitAngle,
     quietestAngle,
-    referenceSource: Number.isFinite(crankAngle) ? "crank angle" : "torque minimum",
+    crankAngle: Number.isFinite(crankAngle) ? normalizeAngle(crankAngle) : null,
+    referenceSource: "torque minimum",
     leftAverage: averageNumbers(leftValues),
     rightAverage: averageNumbers(rightValues),
-    leftShare: totalWork ? (leftWork / totalWork) * 100 : 0,
-    rightShare: totalWork ? (rightWork / totalWork) * 100 : 0,
+    leftShare: totalWork ? (leftWork / totalWork) * 100 : null,
+    rightShare: totalWork ? (rightWork / totalWork) * 100 : null,
     updatedAt: new Date(),
   };
 }
